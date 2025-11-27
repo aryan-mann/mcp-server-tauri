@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-11-26
+
+### Fixed
+- Improve `execute_js` error handling with better JSON parse error logging
+- Add `__TAURI__` availability check before emitting script results
+- Catch unhandled promise rejections in executed scripts
+- Double-wrap script execution to catch both parse and runtime errors
+
 ### Added
 - Initial release of tauri-plugin-mcp-bridge
 - IPC monitoring capabilities

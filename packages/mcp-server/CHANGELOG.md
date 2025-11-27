@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-11-26
+
+### Fixed
+- Handle WebSocket disconnects reliably during port scanning by always cleaning up `PluginClient` connections
+- Prevent uncaught exceptions from orphaned WebSocket error events by adding default error handler
+- Reject pending requests when WebSocket connection closes unexpectedly
+- Auto-reconnect with exponential backoff (max 30s) instead of fixed retry limit
+- Handle MCP server connection errors gracefully (broken pipe, EPIPE)
+- Improve `execute_js` timeout coordination (7s client timeout vs 5s Rust timeout)
+
+### Changed
+- Expand tool descriptions for `tauri_plugin_ipc_monitor`, `tauri_plugin_ipc_get_events`, and `tauri_plugin_emit_event` for better AI agent comprehension
+- `sendCommand` now auto-reconnects if WebSocket is not connected
+
 ### Added
 - Initial release of @hypothesi/tauri-mcp-server
 - Comprehensive MCP server for Tauri v2 development

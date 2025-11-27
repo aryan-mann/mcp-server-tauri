@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-11-26
+
+### Fixed
+- Handle WebSocket disconnects reliably during port scanning
+- Improve `execute_js` error handling with better timeout coordination
+
+### Changed
+- Expand tool descriptions for better AI agent comprehension
+
+### Documentation
+- Clarify that `app.withGlobalTauri` is required in `tauri.conf.json`
+- Add Rust code style guidelines for agents (`cargo fmt`, `cargo clippy`)
+
 ## [0.1.0] - 2025-11-26
 
 ### Added

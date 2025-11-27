@@ -105,11 +105,11 @@ npm run standards
 
    ```bash
    # For individual package
-   git tag tauri-plugin-mcp-bridge/v0.1.0
-   git tag mcp-server/v0.1.0
+   git tag -s tauri-plugin-mcp-bridge/v0.1.0 -m "Release tauri-plugin-mcp-bridge v0.1.0"
+   git tag -s mcp-server/v0.1.0 -m "Release mcp-server v0.1.0"
 
    # For all packages
-   git tag v0.1.0
+   git tag -s v0.1.0 -m "Release v0.1.0"
 
    # Push tag
    git push origin --tags
