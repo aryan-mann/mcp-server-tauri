@@ -1,5 +1,10 @@
 ---
-title: What Your AI Can Do
+title: API Reference - What Your AI Can Do
+description: Explore 26 powerful MCP tools for Tauri development including project management, mobile development, UI automation, and IPC debugging.
+head:
+  - - meta
+    - name: keywords
+      content: tauri api, mcp tools, ai capabilities, tauri automation, ipc debugging
 ---
 
 <script setup>

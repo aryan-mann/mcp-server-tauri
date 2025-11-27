@@ -1,3 +1,12 @@
+---
+title: Getting Started with MCP Server Tauri
+description: Learn how to set up MCP Server Tauri with your AI assistant and create your first Tauri application with AI-powered development tools.
+head:
+  - - meta
+    - name: keywords
+      content: tauri setup, mcp server installation, ai assistant configuration, tauri tutorial
+---
+
 # Getting Started with MCP Server Tauri
 
 This guide will walk you through setting up MCP Server Tauri with your AI assistant and creating your first Tauri application.

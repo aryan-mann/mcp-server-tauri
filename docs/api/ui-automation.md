@@ -1,3 +1,12 @@
+---
+title: UI Automation Tools
+description: Automate Tauri application UI testing with native IPC - manage sessions, capture screenshots, access console logs, and control webview interactions.
+head:
+  - - meta
+    - name: keywords
+      content: tauri ui testing, automation, screenshots, console logs, webview automation
+---
+
 # UI Automation
 
 Control and automate your Tauri application's UI using native Tauri IPC. These tools provide comprehensive automation capabilities for testing and interaction, working seamlessly across all platforms (Linux, Windows, macOS).

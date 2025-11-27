@@ -1,3 +1,12 @@
+---
+title: Changelog
+description: Release history and notable changes for MCP Server Tauri - track new features, bug fixes, and improvements across versions.
+head:
+  - - meta
+    - name: keywords
+      content: changelog, release notes, version history, updates
+---
+
 # Changelog
 
 All notable changes to this project are documented here. Releases are fetched dynamically from [GitHub Releases](https://github.com/hypothesi/mcp-server-tauri/releases).

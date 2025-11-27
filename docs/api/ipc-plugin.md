@@ -1,3 +1,12 @@
+---
+title: IPC & Plugin Tools
+description: Access Tauri IPC layer directly - execute commands, monitor IPC events, emit custom events, and inspect backend state and window information.
+head:
+  - - meta
+    - name: keywords
+      content: tauri ipc, plugin bridge, event monitoring, backend state, window management
+---
+
 # IPC & Plugin Tools
 
 Access Tauri's Inter-Process Communication (IPC) layer directly through the MCP Bridge plugin. These tools provide deep integration with your Tauri backend, window management, and event system.

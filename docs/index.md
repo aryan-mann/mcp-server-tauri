@@ -1,5 +1,12 @@
 ---
 layout: home
+title: MCP Server Tauri - AI-Powered Tauri Development Tools
+titleTemplate: false
+description: An MCP server that provides AI assistants with tools to interact with Tauri applications for development, testing, and debugging.
+head:
+  - - meta
+    - name: keywords
+      content: tauri mcp server, ai development tools, tauri testing, rust desktop app, model context protocol
 
 hero:
   name: MCP Server

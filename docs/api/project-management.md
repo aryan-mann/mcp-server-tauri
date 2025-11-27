@@ -1,3 +1,12 @@
+---
+title: Project Management Tools
+description: MCP tools for managing Tauri project lifecycle - run CLI commands, read and write configuration, manage mobile emulators, and access documentation.
+head:
+  - - meta
+    - name: keywords
+      content: tauri cli, tauri config, project management, tauri build, tauri dev
+---
+
 # Project Management Tools
 
 Essential tools for managing your Tauri project lifecycle, from running CLI commands to configuring your application and managing mobile development environments.

@@ -1,3 +1,12 @@
+---
+title: WebView Interaction Tools
+description: Interact with Tauri webview - perform gestures, keyboard input, take screenshots, execute JavaScript, find elements, and inspect CSS styles.
+head:
+  - - meta
+    - name: keywords
+      content: tauri webview, gestures, keyboard input, javascript execution, element finding, css inspection
+---
+
 # WebView Interaction Tools
 
 Comprehensive tools for interacting with your Tauri application's webview, including gestures, keyboard input, screenshots, and JavaScript execution.

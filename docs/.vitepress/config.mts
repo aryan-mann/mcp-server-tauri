@@ -4,19 +4,50 @@ import { defineConfig } from 'vitepress';
 // eslint-disable-next-line no-process-env
 const base = process.env.VITEPRESS_BASE || '/';
 
+const siteUrl = 'https://hypothesi.github.io/mcp-server-tauri';
+
+const siteDescription =
+   'An MCP server that provides AI assistants with tools to interact with ' +
+   'Tauri applications for development, testing, and debugging';
+
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
    title: 'MCP Server Tauri',
-   description: 'An MCP server that provides AI assistants with tools to interact with Tauri applications',
+   description: siteDescription,
    base,
    cleanUrls: true,
+   lastUpdated: true,
+   sitemap: {
+      hostname: siteUrl,
+   },
 
    head: [
-      [ 'link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' } ],
+      [ 'link', { rel: 'icon', type: 'image/svg+xml', href: `${base}logo.svg` } ],
       [ 'meta', { name: 'theme-color', content: '#0ea5e9' } ],
-      [ 'meta', { name: 'og:type', content: 'website' } ],
-      [ 'meta', { name: 'og:locale', content: 'en' } ],
-      [ 'meta', { name: 'og:site_name', content: 'MCP Server Tauri' } ],
+      // Open Graph
+      [ 'meta', { property: 'og:type', content: 'website' } ],
+      [ 'meta', { property: 'og:locale', content: 'en' } ],
+      [ 'meta', { property: 'og:site_name', content: 'MCP Server Tauri' } ],
+      [ 'meta', { property: 'og:title', content: 'MCP Server Tauri - AI-Powered Tauri Development' } ],
+      [ 'meta', { property: 'og:description', content: siteDescription } ],
+      [ 'meta', { property: 'og:url', content: siteUrl } ],
+      [ 'meta', { property: 'og:image', content: `${siteUrl}/logo.svg` } ],
+      // Twitter Card
+      [ 'meta', { name: 'twitter:card', content: 'summary' } ],
+      [ 'meta', { name: 'twitter:title', content: 'MCP Server Tauri' } ],
+      [ 'meta', { name: 'twitter:description', content: 'AI-powered tools for Tauri application development, testing, and debugging' } ],
+      // SEO
+      [
+         'meta',
+         {
+            name: 'keywords',
+            content: 'tauri, mcp, model context protocol, ai assistant, rust, ' +
+               'desktop app, mobile app, ui automation, testing',
+         },
+      ],
+      [ 'meta', { name: 'author', content: 'Hypothesi' } ],
+      [ 'meta', { name: 'robots', content: 'index, follow' } ],
+      [ 'link', { rel: 'canonical', href: siteUrl } ],
    ],
 
    appearance: 'dark', // Enable theme toggle, default to dark
