@@ -323,3 +323,8 @@ When extending, follow the established patterns for consistency and maintainabil
 
 - When writing tests, prefer practical e2e tests over unit tests, but definitely add unit
   tests when it makes sense
+
+### Rust
+
+- When working with Rust code, run `cargo fmt` and `cargo clippy` when you're done with
+  your changes
