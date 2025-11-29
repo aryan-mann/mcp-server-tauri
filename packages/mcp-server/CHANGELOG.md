@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-11-29
+
+### Added
+- MCP prompts for guided workflows (setup, debugging, testing, mobile development)
+- Multi-window support for targeting specific webview windows
+
+### Changed
+- Improve MCP tool descriptions and metadata for better AI agent comprehension
+
 ## [0.1.3] - 2025-11-26
 
 ### Documentation

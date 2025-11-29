@@ -2,4 +2,22 @@
 
 /* eslint-env node */
 /* eslint-disable no-undef */
-module.exports = require('@silvermine/standardization/commitlint');
+const baseConfig = require('@silvermine/standardization/commitlint');
+
+// Extend scope-enum to include package names
+const baseScopes = baseConfig.rules['scope-enum'][2];
+
+module.exports = {
+   ...baseConfig,
+   rules: {
+      ...baseConfig.rules,
+      'scope-enum': [
+         2,
+         'always',
+         baseScopes.concat([
+            'tauri-mcp-server',
+            'tauri-plugin-mcp-bridge',
+         ]),
+      ],
+   },
+};

@@ -57,6 +57,17 @@ Tool categories: `PROJECT_MANAGEMENT`, `MOBILE_DEVELOPMENT`, `UI_AUTOMATION`, `I
 
 Follow: https://raw.githubusercontent.com/silvermine/standardization/refs/heads/master/commitlint.js
 
+## Releasing
+
+Each package has its own changelog that must be updated before releasing:
+
+- `packages/mcp-server/CHANGELOG.md` - for server changes
+- `packages/tauri-plugin-mcp-bridge/CHANGELOG.md` - for plugin changes
+
+The root `CHANGELOG.md` is for overall project history but is **not** used by the release workflow. GitHub release notes are generated from the package-specific changelogs.
+
+Release process: `node scripts/release-package.js <plugin|server> <version|patch|minor|major>`
+
 ## Rust Code
 
 Run `cargo fmt` and `cargo clippy` after changes in `packages/tauri-plugin-mcp-bridge/`.

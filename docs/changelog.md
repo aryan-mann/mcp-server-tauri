@@ -13,27 +13,56 @@ All notable changes to this project are documented here. Releases are fetched dy
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import MarkdownIt from 'markdown-it';
+
+const md = new MarkdownIt({ html: true, linkify: true });
 
 const releases = ref([]);
+const changelogByVersion = ref({});
 const loading = ref(true);
 const error = ref('');
 
 onMounted(async () => {
-   try {
-      const response = await fetch(
-         'https://api.github.com/repos/hypothesi/mcp-server-tauri/releases'
-      );
-      if (response.ok) {
-         releases.value = await response.json();
-      } else {
-         error.value = 'Failed to load releases';
-      }
-   } catch (e) {
+   // Fetch both in parallel
+   const [releasesRes, changelogRes] = await Promise.all([
+      fetch('https://api.github.com/repos/hypothesi/mcp-server-tauri/releases').catch(() => null),
+      fetch('https://raw.githubusercontent.com/hypothesi/mcp-server-tauri/main/CHANGELOG.md').catch(() => null),
+   ]);
+
+   // Parse releases
+   if (releasesRes?.ok) {
+      releases.value = await releasesRes.json();
+   } else {
       error.value = 'Failed to load releases';
-   } finally {
-      loading.value = false;
    }
+
+   // Parse changelog and index by version
+   if (changelogRes?.ok) {
+      const content = await changelogRes.text();
+      const versionRegex = /## \[(\d+\.\d+\.\d+)\][^\n]*\n([\s\S]*?)(?=## \[|$)/g;
+      let match;
+      while ((match = versionRegex.exec(content)) !== null) {
+         const version = match[1];
+         const body = match[2].trim();
+         if (body && !body.startsWith('_No changes')) {
+            changelogByVersion.value[version] = body;
+         }
+      }
+   }
+
+   loading.value = false;
 });
+
+function extractVersion(tagName) {
+   // Handle tags like "v0.2.0", "tauri-mcp-server/v0.2.0", etc.
+   const match = tagName.match(/v?(\d+\.\d+\.\d+)/);
+   return match ? match[1] : null;
+}
+
+function getChangelogForRelease(release) {
+   const version = extractVersion(release.tag_name);
+   return version ? changelogByVersion.value[version] : null;
+}
 
 function formatDate(dateString) {
    return new Date(dateString).toLocaleDateString('en-US', {
@@ -41,6 +70,11 @@ function formatDate(dateString) {
       month: 'long',
       day: 'numeric'
    });
+}
+
+function renderMarkdown(text) {
+   if (!text) return '';
+   return md.render(text);
 }
 </script>
 
@@ -64,39 +98,20 @@ function formatDate(dateString) {
             <span class="release-tag">{{ release.tag_name }}</span>
             <span class="release-date">{{ formatDate(release.published_at) }}</span>
          </div>
-         <div v-if="release.body" class="release-body" v-html="renderMarkdown(release.body)"></div>
+         <div v-if="getChangelogForRelease(release)" class="project-changes">
+            <div class="project-changes-header">Project Changes</div>
+            <div v-html="renderMarkdown(getChangelogForRelease(release))"></div>
+         </div>
+         <div v-if="release.body" class="release-body">
+            <div class="release-body-header">Package Changes</div>
+            <div v-html="renderMarkdown(release.body)"></div>
+         </div>
          <a :href="release.html_url" target="_blank" rel="noopener" class="view-release">
             View on GitHub →
          </a>
       </div>
    </div>
 </div>
-
-<script>
-// Simple markdown-ish rendering for release notes
-function renderMarkdown(text) {
-   if (!text) return '';
-   return text
-      // Escape HTML
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      // Headers
-      .replace(/^### (.+)$/gm, '<h4>$1</h4>')
-      .replace(/^## (.+)$/gm, '<h3>$1</h3>')
-      // Bold
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      // Links
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-      // List items
-      .replace(/^- (.+)$/gm, '<li>$1</li>')
-      // Wrap consecutive list items
-      .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-      // Line breaks
-      .replace(/\n\n/g, '<br><br>')
-      .replace(/\n/g, '<br>');
-}
-</script>
 
 <style>
 .releases-container {
@@ -170,6 +185,7 @@ function renderMarkdown(text) {
    font-size: 13px;
 }
 
+.project-changes,
 .release-body {
    padding: 16px;
    background: var(--vp-c-bg);
@@ -179,27 +195,42 @@ function renderMarkdown(text) {
    line-height: 1.6;
 }
 
+.project-changes-header,
+.release-body-header {
+   font-size: 0.75rem;
+   font-weight: 600;
+   text-transform: uppercase;
+   letter-spacing: 0.05em;
+   color: var(--vp-c-text-3);
+   margin-bottom: 12px;
+}
+
+.project-changes h3,
 .release-body h3 {
    font-size: 1rem;
    font-weight: 600;
    margin: 16px 0 8px 0;
 }
 
-.release-body h3:first-child {
+.project-changes h3:first-of-type,
+.release-body h3:first-of-type {
    margin-top: 0;
 }
 
+.project-changes h4,
 .release-body h4 {
    font-size: 0.9rem;
    font-weight: 600;
    margin: 12px 0 6px 0;
 }
 
+.project-changes ul,
 .release-body ul {
    margin: 8px 0;
    padding-left: 20px;
 }
 
+.project-changes li,
 .release-body li {
    margin: 4px 0;
 }
