@@ -46,24 +46,13 @@ fn main() {
 
 ### 2. Configure Your AI Assistant
 
-**Claude Code:**
+Use [install-mcp](https://www.npmjs.com/package/install-mcp) to add the server to your AI assistant:
 
 ```bash
-claude mcp add tauri npx @hypothesi/tauri-mcp-server
+npx -y install-mcp @hypothesi/tauri-mcp-server --client claude-code
 ```
 
-**Cursor / VS Code / Windsurf / Cline:**
-
-```json
-{
-  "mcpServers": {
-    "tauri": {
-      "command": "npx",
-      "args": ["-y", "@hypothesi/tauri-mcp-server"]
-    }
-  }
-}
-```
+Supported clients: `claude-code`, `cursor`, `windsurf`, `vscode`, `cline`, `roo-cline`, `claude`, `zed`, `goose`, `warp`, `codex`
 
 ## Available Tools
 

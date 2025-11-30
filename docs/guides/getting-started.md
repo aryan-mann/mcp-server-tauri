@@ -96,13 +96,13 @@ The MCP server communicates with the Rust plugin directly via WebSocket—no npm
 
 ## Step 2: Configure Your AI Assistant
 
-See the [home page](/) for detailed, assistant-specific configuration examples (Claude Code, Cursor, VS Code, Windsurf, Cline, etc.). The configuration snippets there all point to the same command:
+Use [install-mcp](https://www.npmjs.com/package/install-mcp) to add the server to your AI assistant:
 
-```json
-"args": ["-y", "@hypothesi/tauri-mcp-server"]
+```bash
+npx -y install-mcp @hypothesi/tauri-mcp-server --client claude-code
 ```
 
-This tells your assistant to launch the MCP server via `npx @hypothesi/tauri-mcp-server`.
+Supported clients: `claude-code`, `cursor`, `windsurf`, `vscode`, `cline`, `roo-cline`, `claude`, `zed`, `goose`, `warp`, `codex`
 
 ### Using Local Development Build
 

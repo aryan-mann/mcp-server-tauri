@@ -101,18 +101,18 @@ The npm package `@hypothesi/tauri-plugin-mcp-bridge` is **optional**. It provide
 
 ### 3. Configure Your AI Assistant
 
-Add the MCP server to your assistant's configuration:
-
-<details>
-  <summary>Claude Code</summary>
-
-Use the Claude Code CLI to add the Tauri MCP server:
+Use [install-mcp](https://www.npmjs.com/package/install-mcp) to add the server to your AI assistant:
 
 ```bash
-claude mcp add tauri npx @hypothesi/tauri-mcp-server
+npx -y install-mcp @hypothesi/tauri-mcp-server --client claude-code
 ```
 
-Or manually add to your config (Cmd/Ctrl+Shift+P → "MCP: Edit Config"):
+Supported clients: `claude-code`, `cursor`, `windsurf`, `vscode`, `cline`, `roo-cline`, `claude`, `zed`, `goose`, `warp`, `codex`
+
+<details>
+  <summary>Manual Configuration</summary>
+
+If you prefer to configure manually, add to your MCP config:
 
 ```json
 {
@@ -125,99 +125,12 @@ Or manually add to your config (Cmd/Ctrl+Shift+P → "MCP: Edit Config"):
 }
 ```
 
-</details>
-
-<details>
-  <summary>Cursor</summary>
-
-**Click the button to install:**
-
-[<img src="https://cursor.com/deeplink/mcp-install-dark.svg" alt="Install in Cursor">](https://cursor.com/en/install-mcp?name=tauri&config=eyJjb21tYW5kIjoibnB4IC15IEBoeXBvdGhlc2kvdGF1cmktbWNwLXNlcnZlciJ9)
-
-**Or install manually:**
-
-Go to `Cursor Settings` → `MCP` → `New MCP Server`:
-
-```json
-{
-  "mcpServers": {
-    "tauri": {
-      "command": "npx",
-      "args": ["-y", "@hypothesi/tauri-mcp-server"]
-    }
-  }
-}
-```
-
-</details>
-
-<details>
-  <summary>VS Code / Copilot</summary>
-
-**Click the button to add the MCP server in VS Code:**
-
-[<img src="https://img.shields.io/badge/VS_Code-Add_MCP_Server-007ACC?logo=visualstudiocode&logoColor=white" alt="Add Tauri MCP server in VS Code">](vscode://ms-vscode.mcp/installServer?%7B%22name%22%3A%22tauri%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40hypothesi%2Ftauri-mcp-server%22%5D%7D)
-
-**Or install using the VS Code CLI:**
-
-```bash
-code --add-mcp '{"name":"tauri","command":"npx","args":["-y","@hypothesi/tauri-mcp-server"]}'
-```
-
-**Or manually add to your workspace or user `settings.json`:**
-
-```json
-{
-  "mcp.servers": {
-    "tauri": {
-      "command": "npx",
-      "args": ["-y", "@hypothesi/tauri-mcp-server"]
-    }
-  }
-}
-```
-
-</details>
-
-<details>
-  <summary>Windsurf</summary>
-
-In the Cascade pane, the "MCPs" icon (it looks like a plug), then click the settings icon
-in the top right corner.
-
-Or, go to `Windsurf Settings` → `Cascade` and under the `MCP Servers` heading click `Open
-MCP Marketplace`. Then in the Marketplace, click the gear icon to edit the config.
-
-Add:
-
-```json
-{
-  "mcpServers": {
-    "tauri": {
-      "command": "npx",
-      "args": ["-y", "@hypothesi/tauri-mcp-server"]
-    }
-  }
-}
-```
-
-</details>
-
-<details>
-  <summary>Cline</summary>
-
-Follow the [Cline MCP configuration guide](https://docs.cline.bot/mcp/configuring-mcp-servers) and use:
-
-```json
-{
-  "mcpServers": {
-    "tauri": {
-      "command": "npx",
-      "args": ["-y", "@hypothesi/tauri-mcp-server"]
-    }
-  }
-}
-```
+**Config file locations:**
+- **Claude Code:** Cmd/Ctrl+Shift+P → "MCP: Edit Config"
+- **Cursor:** `Cursor Settings` → `MCP` → `New MCP Server`
+- **VS Code:** Add to `settings.json` under `mcp.servers`
+- **Windsurf:** Cascade pane → MCPs icon → settings icon
+- **Cline:** See [Cline MCP configuration guide](https://docs.cline.bot/mcp/configuring-mcp-servers)
 
 </details>
 
