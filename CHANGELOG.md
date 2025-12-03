@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2025-12-02
+
+### Fixed
+- Increase `find_element` outerHTML truncation limit from 200 to 5000 characters
+
+### Documentation
+- Add links to MCP prompts specification in docs
+- Add workaround for editors that don't support MCP prompts (e.g., Windsurf)
+- Add copy button for setup instructions in Getting Started guide
+- Clarify `tauri_webview_execute_js` script format and return value requirements
+
 ## [0.3.0] - 2025-12-02
 
 ### Added
