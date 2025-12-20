@@ -399,6 +399,33 @@ async fn handle_connection<R: Runtime>(
                                 "error": e
                             }),
                         }
+                    } else if cmd_name == "get_window_info" {
+                        // Handle window info retrieval
+                        let window_id = command
+                            .get("args")
+                            .and_then(|a| a.get("windowId"))
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
+
+                        match crate::commands::resolve_window(&app, window_id) {
+                            Ok(window) => match crate::commands::get_window_info(window).await {
+                                Ok(data) => serde_json::json!({
+                                    "id": id,
+                                    "success": true,
+                                    "data": data
+                                }),
+                                Err(e) => serde_json::json!({
+                                    "id": id,
+                                    "success": false,
+                                    "error": e
+                                }),
+                            },
+                            Err(e) => serde_json::json!({
+                                "id": id,
+                                "success": false,
+                                "error": e
+                            }),
+                        }
                     } else if cmd_name == "execute_js" {
                         if let Some(args) = command.get("args") {
                             if let Some(script) = args.get("script").and_then(|v| v.as_str()) {
@@ -517,6 +544,61 @@ async fn handle_connection<R: Runtime>(
                                     "error": e
                                 })
                             }
+                        }
+                    } else if cmd_name == "resize_window" {
+                        // Handle window resize
+                        if let Some(args) = command.get("args") {
+                            let width =
+                                args.get("width").and_then(|v| v.as_u64()).map(|w| w as u32);
+                            let height = args
+                                .get("height")
+                                .and_then(|v| v.as_u64())
+                                .map(|h| h as u32);
+                            let window_id = args
+                                .get("windowId")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string());
+                            let logical = args
+                                .get("logical")
+                                .and_then(|v| v.as_bool())
+                                .unwrap_or(true);
+
+                            match (width, height) {
+                                (Some(w), Some(h)) => {
+                                    let params = crate::commands::ResizeWindowParams {
+                                        width: w,
+                                        height: h,
+                                        window_id,
+                                        logical,
+                                    };
+
+                                    match crate::commands::resize_window(app.clone(), params).await
+                                    {
+                                        Ok(result) => serde_json::json!({
+                                            "id": id,
+                                            "success": result.success,
+                                            "data": result,
+                                            "error": result.error
+                                        }),
+                                        Err(e) => serde_json::json!({
+                                            "id": id,
+                                            "success": false,
+                                            "error": e
+                                        }),
+                                    }
+                                }
+                                _ => serde_json::json!({
+                                    "id": id,
+                                    "success": false,
+                                    "error": "Missing width or height argument"
+                                }),
+                            }
+                        } else {
+                            serde_json::json!({
+                                "id": id,
+                                "success": false,
+                                "error": "Missing args for resize_window"
+                            })
                         }
                     } else if cmd_name == "register_script" {
                         // Handle script registration

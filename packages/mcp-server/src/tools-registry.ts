@@ -13,10 +13,10 @@ import { readLogs, ReadLogsSchema } from './monitor/logs.js';
 import {
    executeIPCCommand,
    manageIPCMonitoring, getIPCEvents, emitTestEvent, getBackendState,
-   listWindows,
+   manageWindow,
    ExecuteIPCCommandSchema,
    ManageIPCMonitoringSchema, GetIPCEventsSchema, EmitTestEventSchema,
-   GetBackendStateSchema, ListWindowsSchema,
+   GetBackendStateSchema, ManageWindowSchema,
 } from './driver/plugin-commands.js';
 import {
    interact, screenshot, keyboard, waitFor, getStyles,
@@ -463,21 +463,27 @@ export const TOOLS: ToolDefinition[] = [
 
    // Window Management Tools
    {
-      name: 'tauri_list_windows',
+      name: 'tauri_manage_window',
       description:
-         '[Tauri Apps Only] List all Tauri webview windows with details including ' +
-         'labels, titles, URLs, and state (focused, visible, isMain). ' +
-         'Requires active tauri_driver_session. Use to discover windows before targeting them. ' +
-         'For browser tabs/windows, use Chrome DevTools MCP instead.',
+         '[Tauri Apps Only] Manage Tauri windows. Actions: ' +
+         '"list" - List all windows with labels, titles, URLs, and state. ' +
+         '"info" - Get detailed info for a window (size, position, title, focus, visibility). ' +
+         '"resize" - Resize a window (requires width/height, uses logical pixels by default). ' +
+         'Requires active tauri_driver_session. ' +
+         'For browser windows, use Chrome DevTools MCP instead.',
       category: TOOL_CATEGORIES.UI_AUTOMATION,
-      schema: ListWindowsSchema,
+      schema: ManageWindowSchema,
       annotations: {
-         title: 'List Tauri Windows',
-         readOnlyHint: true,
+         title: 'Manage Tauri Window',
+         readOnlyHint: false,
+         destructiveHint: false,
+         idempotentHint: true,
          openWorldHint: false,
       },
-      handler: async () => {
-         return await listWindows();
+      handler: async (args) => {
+         const parsed = ManageWindowSchema.parse(args);
+
+         return await manageWindow(parsed);
       },
    },
 ];

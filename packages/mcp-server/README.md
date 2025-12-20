@@ -67,7 +67,7 @@ Supported clients: `claude-code`, `cursor`, `windsurf`, `vscode`, `cline`, `roo-
 | `tauri_webview_wait_for` | Wait for elements, text, or events |
 | `tauri_webview_get_styles` | Get computed CSS styles |
 | `tauri_webview_execute_js` | Execute JavaScript in webview |
-| `tauri_list_windows` | List all open webview windows |
+| `tauri_manage_window` | List windows, get info, or resize |
 
 ### IPC & Plugin
 

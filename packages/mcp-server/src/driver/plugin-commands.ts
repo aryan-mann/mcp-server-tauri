@@ -215,3 +215,123 @@ export async function listWindows(): Promise<string> {
       throw new Error(`Failed to list windows: ${message}`);
    }
 }
+
+export const ResizeWindowSchema = z.object({
+   width: z.number().int().positive().describe('Width in pixels'),
+   height: z.number().int().positive().describe('Height in pixels'),
+   windowId: z.string().optional().describe('Window label to resize (defaults to "main")'),
+   logical: z.boolean().optional().default(true)
+      .describe('Use logical pixels (true, default) or physical pixels (false)'),
+});
+
+/**
+ * Resizes a window to the specified dimensions.
+ *
+ * @param options - Resize options including width, height, and optional windowId
+ * @returns JSON string with the result of the resize operation
+ */
+export async function resizeWindow(options: {
+   width: number;
+   height: number;
+   windowId?: string;
+   logical?: boolean;
+}): Promise<string> {
+   try {
+      await connectPlugin();
+      const client = getPluginClient();
+
+      const response = await client.sendCommand({
+         command: 'resize_window',
+         args: {
+            width: options.width,
+            height: options.height,
+            windowId: options.windowId,
+            logical: options.logical ?? true,
+         },
+      });
+
+      if (!response.success) {
+         throw new Error(response.error || 'Unknown error');
+      }
+
+      return JSON.stringify(response.data);
+   } catch(error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      throw new Error(`Failed to resize window: ${message}`);
+   }
+}
+
+export const ManageWindowSchema = z.object({
+   action: z.enum([ 'list', 'info', 'resize' ])
+      .describe('Action: "list" all windows, get "info" for one window, or "resize" a window'),
+   windowId: z.string().optional()
+      .describe('Window label to target (defaults to "main"). Required for "info", optional for "resize"'),
+   width: z.number().int().positive().optional()
+      .describe('Width in pixels (required for "resize" action)'),
+   height: z.number().int().positive().optional()
+      .describe('Height in pixels (required for "resize" action)'),
+   logical: z.boolean().optional().default(true)
+      .describe('Use logical pixels (true, default) or physical pixels (false). Only for "resize"'),
+});
+
+/**
+ * Unified window management function.
+ *
+ * Actions:
+ * - `list`: List all open webview windows with their labels, titles, URLs, and state
+ * - `info`: Get detailed info for a window (size, position, title, focus, visibility)
+ * - `resize`: Resize a window to specified dimensions
+ *
+ * @param options - Action and parameters
+ * @returns JSON string with the result
+ */
+export async function manageWindow(options: {
+   action: 'list' | 'info' | 'resize';
+   windowId?: string;
+   width?: number;
+   height?: number;
+   logical?: boolean;
+}): Promise<string> {
+   const { action, windowId, width, height, logical } = options;
+
+   switch (action) {
+      case 'list': {
+         return listWindows();
+      }
+
+      case 'info': {
+         try {
+            await connectPlugin();
+            const client = getPluginClient();
+
+            const response = await client.sendCommand({
+               command: 'get_window_info',
+               args: { windowId },
+            });
+
+            if (!response.success) {
+               throw new Error(response.error || 'Unknown error');
+            }
+
+            return JSON.stringify(response.data);
+         } catch(error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+
+            throw new Error(`Failed to get window info: ${message}`);
+         }
+      }
+
+      case 'resize': {
+         if (width === undefined || height === undefined) {
+            throw new Error('width and height are required for resize action');
+         }
+
+         return resizeWindow({ width, height, windowId, logical });
+      }
+
+      default: {
+         throw new Error(`Unknown action: ${action}`);
+      }
+   }
+}

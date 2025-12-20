@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { listWindows } from '../../src/driver/plugin-commands';
+import { manageWindow } from '../../src/driver/plugin-commands';
 import { executeJavaScript, screenshot, interact } from '../../src/driver/webview-interactions';
 import { manageDriverSession } from '../../src/driver/session-manager';
 
@@ -21,7 +21,7 @@ describe('Multi-Window Support E2E Tests', () => {
 
    describe('Window Listing', () => {
       it('should list all windows', async () => {
-         const result = await listWindows();
+         const result = await manageWindow({ action: 'list' });
 
          const parsed = JSON.parse(result);
 
@@ -33,7 +33,7 @@ describe('Multi-Window Support E2E Tests', () => {
       }, TIMEOUT);
 
       it('should return window info with expected properties', async () => {
-         const result = await listWindows();
+         const result = await manageWindow({ action: 'list' });
 
          const parsed = JSON.parse(result);
 
@@ -108,6 +108,75 @@ describe('Multi-Window Support E2E Tests', () => {
          });
 
          expect(result).toBeTruthy();
+      }, TIMEOUT);
+   });
+
+   describe('Window Resize', () => {
+      it('should resize window to specified dimensions', async () => {
+         const result = await manageWindow({
+            action: 'resize',
+            width: 800,
+            height: 600,
+         });
+
+         const parsed = JSON.parse(result);
+
+         expect(parsed.success).toBe(true);
+         expect(parsed.windowLabel).toBe('main');
+         expect(parsed.width).toBe(800);
+         expect(parsed.height).toBe(600);
+      }, TIMEOUT);
+
+      it('should resize window with logical pixels by default', async () => {
+         const result = await manageWindow({
+            action: 'resize',
+            width: 1024,
+            height: 768,
+         });
+
+         const parsed = JSON.parse(result);
+
+         expect(parsed.success).toBe(true);
+         expect(parsed.logical).toBe(true);
+      }, TIMEOUT);
+
+      it('should resize specific window by windowId', async () => {
+         const result = await manageWindow({
+            action: 'resize',
+            width: 640,
+            height: 480,
+            windowId: 'main',
+         });
+
+         const parsed = JSON.parse(result);
+
+         expect(parsed.success).toBe(true);
+         expect(parsed.windowLabel).toBe('main');
+      }, TIMEOUT);
+   });
+
+   describe('Window Info', () => {
+      it('should get detailed info for main window', async () => {
+         const result = await manageWindow({ action: 'info' });
+
+         const parsed = JSON.parse(result);
+
+         expect(parsed).toHaveProperty('width');
+         expect(parsed).toHaveProperty('height');
+         expect(parsed).toHaveProperty('x');
+         expect(parsed).toHaveProperty('y');
+         expect(parsed).toHaveProperty('title');
+         expect(parsed).toHaveProperty('focused');
+         expect(parsed).toHaveProperty('visible');
+      }, TIMEOUT);
+
+      it('should get info for specific window by windowId', async () => {
+         const result = await manageWindow({ action: 'info', windowId: 'main' });
+
+         const parsed = JSON.parse(result);
+
+         expect(parsed).toHaveProperty('width');
+         expect(parsed).toHaveProperty('height');
       }, TIMEOUT);
    });
 });

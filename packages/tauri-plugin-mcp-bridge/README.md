@@ -128,7 +128,7 @@ This plugin is part of the larger MCP Server for Tauri, which provides **16 tota
 Tools for UI automation and webview interaction via the plugin's WebSocket connection:
 
 1. **tauri_driver_session** - Manage automation session (start, stop, or status)
-2. **tauri_list_windows** - List all webview windows with details
+2. **tauri_manage_window** - List windows, get window info, or resize windows
 3. **tauri_webview_find_element** - Find an element in the webview
 4. **tauri_read_logs** - Read logs (console, Android logcat, iOS, system)
 5. **tauri_webview_interact** - Perform gestures (click, double-click, long-press, swipe, scroll, focus)

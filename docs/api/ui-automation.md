@@ -17,11 +17,12 @@ All webview tools support targeting specific windows in multi-window application
 
 ### Discovering Windows
 
-Use `tauri_list_windows` to discover all available windows before targeting them:
+Use `tauri_manage_window` with `action: "list"` to discover all available windows:
 
 ```javascript
 {
-  "tool": "tauri_list_windows"
+  "tool": "tauri_manage_window",
+  "action": "list"
 }
 ```
 
@@ -51,6 +52,59 @@ Use `tauri_list_windows` to discover all available windows before targeting them
   "totalCount": 2
 }
 ```
+
+### Getting Window Info
+
+Use `action: "info"` to get detailed information about a specific window:
+
+```javascript
+{
+  "tool": "tauri_manage_window",
+  "action": "info",
+  "windowId": "main"
+}
+```
+
+**Response:**
+
+```json
+{
+  "width": 800,
+  "height": 600,
+  "x": 100,
+  "y": 100,
+  "title": "My App",
+  "focused": true,
+  "visible": true
+}
+```
+
+### Resizing Windows
+
+Use `action: "resize"` to resize a window to specific dimensions:
+
+```javascript
+{
+  "tool": "tauri_manage_window",
+  "action": "resize",
+  "width": 1024,
+  "height": 768
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "windowLabel": "main",
+  "width": 1024,
+  "height": 768,
+  "logical": true
+}
+```
+
+By default, dimensions are in logical pixels (respects display scaling). Set `logical: false` for physical pixels. The resize will fail if the window has fixed size constraints or is not resizable.
 
 ### Targeting a Specific Window
 

@@ -11,6 +11,7 @@ pub mod execute_command;
 pub mod execute_js;
 pub mod ipc_monitor;
 pub mod list_windows;
+pub mod resize_window;
 pub mod screenshot;
 pub mod script_executor;
 pub mod script_injection;
@@ -29,6 +30,7 @@ pub use list_windows::{
     list_windows, resolve_window, resolve_window_with_context, ResolvedWindow, WindowContext,
     WindowInfo,
 };
+pub use resize_window::{resize_window, ResizeWindowParams, ResizeWindowResult};
 pub use screenshot::capture_native_screenshot;
 pub use script_executor::script_result;
 pub use script_injection::request_script_injection;
