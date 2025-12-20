@@ -18,7 +18,8 @@ describe('Script Manager E2E Tests', () => {
 
    beforeAll(async () => {
       // App is already started globally - just init the session
-      await manageDriverSession('start');
+      // Specify port 9300 to connect to the test-app (not other Tauri apps)
+      await manageDriverSession('start', undefined, 9300);
    }, TIMEOUT);
 
    afterAll(async () => {

@@ -146,6 +146,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
 /// ```
 pub fn init_with_config<R: Runtime>(config: Config) -> TauriPlugin<R> {
     let bind_address = config.bind_address.clone();
+    let base_port = config.base_port;
 
     PluginBuilder::<R>::new("mcp-bridge")
         .invoke_handler(tauri::generate_handler![
@@ -176,7 +177,7 @@ pub fn init_with_config<R: Runtime>(config: Config) -> TauriPlugin<R> {
             app.manage(script_registry);
 
             // Find an available port for WebSocket server
-            let port = find_available_port(&bind_address);
+            let port = find_available_port(&bind_address, base_port);
 
             // Log app information for debugging
             let app_name = app

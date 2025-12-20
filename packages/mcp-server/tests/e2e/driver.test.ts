@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { manageDriverSession } from '../../src/driver/session-manager';
-import { readConfig } from '../../src/manager/config';
+import { readFile } from 'fs/promises';
 import path from 'path';
+import { manageDriverSession } from '../../src/driver/session-manager';
 
 describe('Driver Module E2E (Real App)', () => {
    const TIMEOUT = 90000;
@@ -10,7 +10,8 @@ describe('Driver Module E2E (Real App)', () => {
 
    beforeAll(async () => {
       // App is already started globally
-      await manageDriverSession('start');
+      // Specify port 9300 to connect to the test-app (not other Tauri apps)
+      await manageDriverSession('start', undefined, 9300);
    }, TIMEOUT);
 
    afterAll(async () => {
@@ -20,15 +21,15 @@ describe('Driver Module E2E (Real App)', () => {
 
    it('should launch the test app successfully', async () => {
       // Verify the app is running by checking config can be read
-      const config = await readConfig(TEST_APP_PATH, 'tauri.conf.json');
+      const configPath = path.join(TEST_APP_PATH, 'src-tauri/tauri.conf.json');
+
+      const config = await readFile(configPath, 'utf-8');
 
       expect(config).toContain('test-app');
       expect(config).toContain('com.hypothesi.test-app');
    }, TIMEOUT);
 
    it('should verify devtools feature is enabled', async () => {
-      const { readFile } = await import('fs/promises');
-
       const cargoToml = await readFile(path.join(TEST_APP_PATH, 'src-tauri/Cargo.toml'), 'utf-8');
 
       expect(cargoToml).toContain('features = ["devtools"]');

@@ -10,12 +10,16 @@ pub struct Config {
     /// Default: "0.0.0.0" (all interfaces, for remote device support)
     /// Use "127.0.0.1" for localhost-only access.
     pub bind_address: String,
+    /// The base port for the WebSocket server.
+    /// Default: 9223. The plugin will scan up to 100 ports from this base.
+    pub base_port: u16,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             bind_address: "0.0.0.0".to_string(),
+            base_port: 9223,
         }
     }
 }
@@ -25,6 +29,7 @@ impl Config {
     pub fn new(bind_address: &str) -> Self {
         Self {
             bind_address: bind_address.to_string(),
+            base_port: 9223,
         }
     }
 
@@ -32,6 +37,7 @@ impl Config {
     pub fn localhost_only() -> Self {
         Self {
             bind_address: "127.0.0.1".to_string(),
+            base_port: 9223,
         }
     }
 }
@@ -84,6 +90,26 @@ impl Builder {
     /// ```
     pub fn bind_address(mut self, addr: &str) -> Self {
         self.config.bind_address = addr.to_string();
+        self
+    }
+
+    /// Sets the base port for the WebSocket server.
+    ///
+    /// The plugin will scan up to 100 ports starting from this base port.
+    ///
+    /// # Arguments
+    ///
+    /// * `port` - The base port number (e.g., 9223)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tauri_plugin_mcp_bridge::Builder;
+    ///
+    /// let builder = Builder::new().base_port(9323);
+    /// ```
+    pub fn base_port(mut self, port: u16) -> Self {
+        self.config.base_port = port;
         self
     }
 

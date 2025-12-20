@@ -54,7 +54,7 @@ async function startGlobalTestApp(): Promise<void> {
             checkReady();
          }
 
-         if (!pluginReady && output.includes('MCP Bridge WebSocket server listening')) {
+         if (!pluginReady && output.includes('WebSocket server listening on:')) {
             pluginReady = true;
             console.log('✓ MCP Bridge plugin ready');
             checkReady();

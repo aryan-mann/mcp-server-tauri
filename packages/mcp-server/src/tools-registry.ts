@@ -120,7 +120,11 @@ export const TOOLS: ToolDefinition[] = [
       name: 'tauri_driver_session',
       description:
          '[Tauri Apps Only] Start/stop automation session to connect to a RUNNING Tauri app. ' +
-         'Use action "status" to check current connection state. ' +
+         'Use action "status" to check current connection state and get the app identifier. ' +
+         'The status response includes an "identifier" field (e.g., "com.example.myapp") that uniquely identifies the connected app. ' +
+         'The identifier may be null if the Tauri app uses an older plugin version that does not provide it. ' +
+         'Before starting a new session, check status first - if already connected to the correct app (matching identifier), ' +
+         'reuse the existing session. If identifier is null, you cannot verify the app identity. ' +
          'REQUIRED before using other tauri_webview_* or tauri_plugin_* tools. ' +
          'Connects via WebSocket to the MCP Bridge plugin in the Tauri app. ' +
          'For browser automation, use Chrome DevTools MCP instead. ' +

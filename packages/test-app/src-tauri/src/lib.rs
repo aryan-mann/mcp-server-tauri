@@ -26,7 +26,13 @@ pub fn run() {
 
     #[cfg(debug_assertions)]
     {
-        builder = builder.plugin(tauri_plugin_mcp_bridge::init());
+        // Use port 9300 to avoid collision with other Tauri apps using default port 9223
+        // Note: Must be within the MCP server's discovery range (9223-9322)
+        builder = builder.plugin(
+            tauri_plugin_mcp_bridge::Builder::new()
+                .base_port(9300)
+                .build(),
+        );
     }
 
     builder

@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 import { getDefaultHost, getDefaultPort } from '../config.js';
 import { AppDiscovery } from './app-discovery.js';
-import { resetPluginClient, getPluginClient } from './plugin-client.js';
+import { resetPluginClient, getPluginClient, connectPlugin } from './plugin-client.js';
+import { getBackendState } from './plugin-commands.js';
 import { resetInitialization } from './webview-executor.js';
 
 /**
@@ -34,9 +35,9 @@ export const ManageDriverSessionSchema = z.object({
 // ============================================================================
 
 // AppDiscovery instance - recreated when host changes
-// Track current session info
+// Track current session info including app identifier for session reuse
 let appDiscovery: AppDiscovery | null = null,
-    currentSession: { name: string; host: string; port: number } | null = null;
+    currentSession: { name: string; identifier: string | null; host: string; port: number } | null = null;
 
 function getAppDiscovery(host: string): AppDiscovery {
    if (!appDiscovery || appDiscovery.host !== host) {
@@ -67,7 +68,30 @@ async function tryConnect(host: string, port: number): Promise<{ name: string; h
 }
 
 /**
- * Manage session lifecycle (start or stop).
+ * Fetch the app identifier from the backend state.
+ * Must be called after the singleton pluginClient is connected.
+ *
+ * @returns The app identifier (bundle ID) or null if not available. Returns null when:
+ *          - The plugin doesn't support the identifier field (older versions)
+ *          - The backend state request fails
+ *          - The identifier field is missing from the response
+ */
+async function fetchAppIdentifier(): Promise<string | null> {
+   try {
+      const stateJson = await getBackendState();
+
+      const state = JSON.parse(stateJson);
+
+      // Return null if identifier is not present (backward compat with older plugins)
+      return state.app?.identifier ?? null;
+   } catch{
+      // Return null on any error (e.g., older plugin version that doesn't support this)
+      return null;
+   }
+}
+
+/**
+ * Manage session lifecycle (start, stop, or status).
  *
  * Connection strategy for 'start':
  * 1. Try localhost:{port} first (most reliable for simulators/emulators/desktop)
@@ -75,9 +99,16 @@ async function tryConnect(host: string, port: number): Promise<{ name: string; h
  * 3. If both fail, try auto-discovery on localhost
  * 4. Return error if all attempts fail
  *
- * @param action - 'start' or 'stop'
+ * @param action - 'start', 'stop', or 'status'
  * @param host - Optional host address (defaults to env var or localhost)
  * @param port - Optional port number (defaults to 9223)
+ * @returns For 'start'/'stop': A message string describing the result.
+ *          For 'status': A JSON string with connection details including:
+ *          - `connected`: boolean indicating if connected
+ *          - `app`: app name (or null if not connected)
+ *          - `identifier`: app bundle ID (e.g., "com.example.app"), or null
+ *          - `host`: connected host (or null)
+ *          - `port`: connected port (or null)
  */
 export async function manageDriverSession(
    action: 'start' | 'stop' | 'status',
@@ -92,6 +123,7 @@ export async function manageDriverSession(
          return JSON.stringify({
             connected: true,
             app: currentSession.name,
+            identifier: currentSession.identifier,
             host: currentSession.host,
             port: currentSession.port,
          });
@@ -99,13 +131,17 @@ export async function manageDriverSession(
       return JSON.stringify({
          connected: false,
          app: null,
+         identifier: null,
          host: null,
          port: null,
       });
    }
 
    if (action === 'start') {
-      // Reset any existing plugin client to ensure fresh connection
+      // Reset any existing connections to ensure fresh connection
+      if (appDiscovery) {
+         await appDiscovery.disconnectAll();
+      }
       resetPluginClient();
 
       const configuredHost = host ?? getDefaultHost();
@@ -117,7 +153,12 @@ export async function manageDriverSession(
          try {
             const session = await tryConnect('localhost', configuredPort);
 
-            currentSession = session;
+            // Connect the singleton pluginClient so status checks work
+            await connectPlugin(session.host, session.port);
+            // Fetch app identifier after singleton is connected
+            const identifier = await fetchAppIdentifier();
+
+            currentSession = { ...session, identifier };
             return `Session started with app: ${session.name} (localhost:${session.port})`;
          } catch{
             // Localhost failed, will try configured host next
@@ -128,7 +169,12 @@ export async function manageDriverSession(
       try {
          const session = await tryConnect(configuredHost, configuredPort);
 
-         currentSession = session;
+         // Connect the singleton pluginClient so status checks work
+         await connectPlugin(session.host, session.port);
+         // Fetch app identifier after singleton is connected
+         const identifier = await fetchAppIdentifier();
+
+         currentSession = { ...session, identifier };
          return `Session started with app: ${session.name} (${session.host}:${session.port})`;
       } catch{
          // Configured host failed
@@ -147,7 +193,12 @@ export async function manageDriverSession(
 
             const session = await tryConnect('localhost', firstApp.port);
 
-            currentSession = session;
+            // Connect the singleton pluginClient so status checks work
+            await connectPlugin(session.host, session.port);
+            // Fetch app identifier after singleton is connected
+            const identifier = await fetchAppIdentifier();
+
+            currentSession = { ...session, identifier };
             return `Session started with app: ${session.name} (localhost:${session.port})`;
          } catch{
             // Discovery found app but connection failed
@@ -160,7 +211,12 @@ export async function manageDriverSession(
 
          const session = await tryConnect(configuredHost, configuredPort);
 
-         currentSession = session;
+         // Connect the singleton pluginClient so status checks work
+         await connectPlugin(session.host, session.port);
+         // Fetch app identifier after singleton is connected
+         const identifier = await fetchAppIdentifier();
+
+         currentSession = { ...session, identifier };
          return `Session started with app: ${session.name} (${session.host}:${session.port})`;
       } catch{
          // All attempts failed

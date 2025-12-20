@@ -140,6 +140,26 @@ export async function emitTestEvent(eventName: string, payload: unknown): Promis
    }
 }
 
+export const GetWindowInfoSchema = z.object({});
+
+export async function getWindowInfo(): Promise<string> {
+   try {
+      const result = await executeIPCCommand('plugin:mcp-bridge|get_window_info');
+
+      const parsed = JSON.parse(result);
+
+      if (!parsed.success) {
+         throw new Error(parsed.error || 'Unknown error');
+      }
+
+      return JSON.stringify(parsed.result);
+   } catch(error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      throw new Error(`Failed to get window info: ${message}`);
+   }
+}
+
 export const GetBackendStateSchema = z.object({});
 
 export async function getBackendState(): Promise<string> {

@@ -11,7 +11,8 @@ describe('Multi-Window Support E2E Tests', () => {
    const TIMEOUT = 10000;
 
    beforeAll(async () => {
-      await manageDriverSession('start');
+      // Specify port 9300 to connect to the test-app (not other Tauri apps)
+      await manageDriverSession('start', undefined, 9300);
    });
 
    afterAll(async () => {
@@ -79,14 +80,20 @@ describe('Multi-Window Support E2E Tests', () => {
       it('should take screenshot without windowId', async () => {
          const result = await screenshot({});
 
-         // Result is now a ScreenshotResult with content array
-         expect(result).toHaveProperty('content');
+         // Result is now a ScreenshotResult with content array (not a file result)
+         expect('content' in result).toBe(true);
+
+         if (!('content' in result)) {
+            throw new Error('Expected ScreenshotResult with content');
+         }
+
          expect(Array.isArray(result.content)).toBe(true);
 
          // Should have text and image content
-         const textContent = result.content.find((c) => { return c.type === 'text'; });
+         type ContentItem = { type: string };
+         const textContent = result.content.find((c: ContentItem) => { return c.type === 'text'; });
 
-         const imageContent = result.content.find((c) => { return c.type === 'image'; });
+         const imageContent = result.content.find((c: ContentItem) => { return c.type === 'image'; });
 
          expect(textContent).toBeDefined();
          expect(imageContent).toBeDefined();

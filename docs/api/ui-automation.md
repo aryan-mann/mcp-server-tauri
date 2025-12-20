@@ -87,7 +87,7 @@ Manage UI automation session lifecycle. Initializes console log capture and prep
 
 - **`start`** - Start a new session, connecting to the Tauri app
 - **`stop`** - Stop the current session and disconnect
-- **`status`** - Check current connection status without changing state
+- **`status`** - Check current connection status without changing state. Returns the app's `identifier` (bundle ID) which can be used to determine if the session is connected to the correct app
 
 ### Connection Strategy
 
@@ -140,10 +140,15 @@ Session started with app: My App (localhost:9223)
 {
   "connected": true,
   "app": "My App",
+  "identifier": "com.example.my-app",
   "host": "localhost",
   "port": 9223
 }
 ```
+
+The `identifier` field contains the app's bundle ID (e.g., `com.example.my-app`). Use this to verify you're connected to the correct application before reusing an existing session.
+
+> **Note:** The `identifier` field may be `null` if the Tauri app uses an older version of the MCP Bridge plugin that doesn't provide app identification. In this case, you cannot verify the app identity and should start a new session if uncertain.
 
 ### Environment Variables
 
