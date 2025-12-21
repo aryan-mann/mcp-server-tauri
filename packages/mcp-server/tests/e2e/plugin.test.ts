@@ -9,6 +9,7 @@ import {
    executeIPCCommand,
 } from '../../src/driver/plugin-commands';
 import { manageDriverSession } from '../../src/driver/session-manager';
+import { getTestAppPort } from '../test-utils';
 
 /**
  * E2E tests for MCP Bridge Plugin.
@@ -18,9 +19,8 @@ describe('MCP Bridge Plugin E2E Tests', () => {
    const TIMEOUT = 10000;
 
    beforeAll(async () => {
-      // App is already started globally - just init the session
-      // Specify port 9300 to connect to the test-app (not other Tauri apps)
-      await manageDriverSession('start', undefined, 9300);
+      // App is already started globally - connect to the dynamically assigned port
+      await manageDriverSession('start', undefined, getTestAppPort());
    });
 
    afterAll(async () => {

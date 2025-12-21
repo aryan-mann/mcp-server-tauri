@@ -8,6 +8,7 @@ import {
    getStyles,
    executeJavaScript,
 } from '../../src/driver/webview-interactions';
+import { getTestAppPort } from '../test-utils';
 
 /**
  * E2E tests for webview interactions.
@@ -17,9 +18,8 @@ describe('Webview Interactions E2E Tests', () => {
    const TIMEOUT = 10000;
 
    beforeAll(async () => {
-      // App is already started globally - just init the session
-      // Specify port 9300 to connect to the test-app (not other Tauri apps)
-      await manageDriverSession('start', undefined, 9300);
+      // App is already started globally - connect to the dynamically assigned port
+      await manageDriverSession('start', undefined, getTestAppPort());
    });
 
    afterAll(async () => {

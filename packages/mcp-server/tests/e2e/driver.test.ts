@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { manageDriverSession } from '../../src/driver/session-manager';
+import { getTestAppPort } from '../test-utils';
 
 describe('Driver Module E2E (Real App)', () => {
    const TIMEOUT = 90000;
@@ -9,9 +10,8 @@ describe('Driver Module E2E (Real App)', () => {
    const TEST_APP_PATH = path.resolve(process.cwd(), '../test-app');
 
    beforeAll(async () => {
-      // App is already started globally
-      // Specify port 9300 to connect to the test-app (not other Tauri apps)
-      await manageDriverSession('start', undefined, 9300);
+      // App is already started globally - connect to the dynamically assigned port
+      await manageDriverSession('start', undefined, getTestAppPort());
    }, TIMEOUT);
 
    afterAll(async () => {

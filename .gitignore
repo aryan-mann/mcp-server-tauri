@@ -32,3 +32,6 @@ docs/.vitepress/dist
 
 # AI Plans
 specs/plans
+
+# Test artifacts
+packages/mcp-server/.test-app-port

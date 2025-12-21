@@ -1,7 +1,9 @@
 import { spawn, ChildProcess } from 'child_process';
+import { writeFileSync, unlinkSync, existsSync } from 'fs';
 import path from 'path';
 
-const TEST_APP_PATH = path.resolve(process.cwd(), '../test-app');
+const TEST_APP_PATH = path.resolve(process.cwd(), '../test-app'),
+      TEST_APP_PORT_FILE = path.resolve(process.cwd(), '.test-app-port');
 
 // Detect GitHub CI environment and use longer timeout
 // eslint-disable-next-line no-process-env
@@ -10,7 +12,8 @@ const IS_CI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS);
 const STARTUP_TIMEOUT_MS = IS_CI ? 480000 : 30000; // 4 minutes in CI, 30 seconds locally
 
 let tauriProcess: ChildProcess | null = null,
-    isShuttingDown = false;
+    isShuttingDown = false,
+    testAppPort: number | null = null;
 
 async function startGlobalTestApp(): Promise<void> {
    return new Promise((resolve, reject) => {
@@ -55,8 +58,16 @@ async function startGlobalTestApp(): Promise<void> {
          }
 
          if (!pluginReady && output.includes('WebSocket server listening on:')) {
+            // Extract the port from the log message (e.g., "0.0.0.0:9301")
+            const portMatch = output.match(/WebSocket server listening on:.*:(\d+)/);
+
+            if (portMatch) {
+               testAppPort = parseInt(portMatch[1], 10);
+               console.log(`✓ MCP Bridge plugin ready on port ${testAppPort}`);
+            } else {
+               console.log('✓ MCP Bridge plugin ready');
+            }
             pluginReady = true;
-            console.log('✓ MCP Bridge plugin ready');
             checkReady();
          }
       });
@@ -126,11 +137,22 @@ function stopGlobalTestApp(): void {
 export async function setup(): Promise<void> {
    await startGlobalTestApp();
 
-   // Store the process reference globally so tests can access it
+   // Write port to file so tests can read it (global vars don't work across processes)
+   if (testAppPort) {
+      writeFileSync(TEST_APP_PORT_FILE, String(testAppPort), 'utf-8');
+   }
+
+   // Store the process reference globally
    (global as Record<string, unknown>).__TAURI_APP_STARTED = true;
 }
 
 export async function teardown(): Promise<void> {
    stopGlobalTestApp();
+
+   // Clean up the port file
+   if (existsSync(TEST_APP_PORT_FILE)) {
+      unlinkSync(TEST_APP_PORT_FILE);
+   }
+
    (global as Record<string, unknown>).__TAURI_APP_STARTED = false;
 }

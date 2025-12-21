@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { manageDriverSession } from '../../src/driver/session-manager';
+import { getTestAppPort } from '../test-utils';
 
 describe('Session Manager E2E Tests', () => {
    const TIMEOUT = 30000;
@@ -31,11 +32,11 @@ describe('Session Manager E2E Tests', () => {
 
    describe('Session Start with Custom Port', () => {
       it('should start session on specified port', async () => {
-         // Test-app runs on port 9300
-         const result = await manageDriverSession('start', undefined, 9300);
+         const port = getTestAppPort(),
+               result = await manageDriverSession('start', undefined, port);
 
          expect(result).toContain('Session started');
-         expect(result).toContain('9300');
+         expect(result).toContain(String(port));
       }, TIMEOUT);
 
       afterAll(async () => {
@@ -87,12 +88,12 @@ describe('Session Manager E2E Tests', () => {
 
    describe('Session with Custom Host and Port', () => {
       it('should accept both host and port parameters', async () => {
-         // Test-app runs on port 9300
-         const result = await manageDriverSession('start', 'localhost', 9300);
+         const port = getTestAppPort(),
+               result = await manageDriverSession('start', 'localhost', port);
 
          expect(result).toContain('Session started');
          expect(result).toContain('localhost');
-         expect(result).toContain('9300');
+         expect(result).toContain(String(port));
       }, TIMEOUT);
 
       afterAll(async () => {
@@ -134,9 +135,10 @@ describe('Session Manager E2E Tests', () => {
       }, TIMEOUT);
 
       it('should return connected status with app identifier after starting session', async () => {
-         // Specify port 9300 to connect to the test-app
-         // (not other Tauri apps that may be running)
-         await manageDriverSession('start', undefined, 9300);
+         // Connect to the test-app on its dynamically assigned port
+         const port = getTestAppPort();
+
+         await manageDriverSession('start', undefined, port);
 
          const result = await manageDriverSession('status'),
                status = JSON.parse(result);
@@ -146,7 +148,7 @@ describe('Session Manager E2E Tests', () => {
          expect(status.identifier).toBeDefined();
          expect(status.identifier).toBe('com.hypothesi.test-app');
          expect(status.host).toBeDefined();
-         expect(status.port).toBe(9300);
+         expect(status.port).toBe(port);
       }, TIMEOUT);
 
       afterAll(async () => {

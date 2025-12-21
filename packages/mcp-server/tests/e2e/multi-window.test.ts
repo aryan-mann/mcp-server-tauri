@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { manageWindow } from '../../src/driver/plugin-commands';
 import { executeJavaScript, screenshot, interact } from '../../src/driver/webview-interactions';
 import { manageDriverSession } from '../../src/driver/session-manager';
+import { getTestAppPort } from '../test-utils';
 
 /**
  * E2E tests for multi-window support.
@@ -11,8 +12,8 @@ describe('Multi-Window Support E2E Tests', () => {
    const TIMEOUT = 10000;
 
    beforeAll(async () => {
-      // Specify port 9300 to connect to the test-app (not other Tauri apps)
-      await manageDriverSession('start', undefined, 9300);
+      // App is already started globally - connect to the dynamically assigned port
+      await manageDriverSession('start', undefined, getTestAppPort());
    });
 
    afterAll(async () => {
