@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-12-21
+
+### Added
+- Add `tauri_manage_window` tool combining list, info, and resize window actions
+- Add `tauri_get_setup_instructions` tool for AI-assisted plugin setup
+- Add app identifier to `tauri_driver_session` status response for session verification
+
+### Changed
+- Update `/setup` prompt to require user permission before making changes
+
 ## [0.4.0] - 2025-12-05
 
 ### Changed
