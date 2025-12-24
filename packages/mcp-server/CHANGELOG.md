@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2025-12-23
+
+### Added
+- MCP Registry server metadata (`server.json`) for registry integration
+- Automated `server.json` version synchronization script
+- `mcpName` field in package.json for registry verification
+
+### Documentation
+- Added comprehensive MCP Registry publishing guide
+
 ## [0.6.0] - 2025-12-23
 
 ### Added

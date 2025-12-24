@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2025-12-23
+
+### Added
+- Automated MCP Registry publishing workflow with OIDC authentication
+- MCP Registry server metadata (`server.json`) for registry integration
+- Automated `server.json` version synchronization in release workflow
+- npm provenance attestation for supply chain security
+
+### Changed
+- Standardized Node.js version to `lts/*` across all workflows
+- Updated `.nvmrc` to Node.js 24
+
+### Documentation
+- Added comprehensive MCP Registry publishing guide
+- Updated workflows README with npm trusted publishers setup
+- Added troubleshooting section for common workflow issues
+
 ## [0.6.0] - 2025-12-23
 
 ### Added
