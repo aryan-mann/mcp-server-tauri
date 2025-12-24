@@ -6,50 +6,101 @@ This directory contains GitHub Actions workflows for CI/CD automation.
 
 ### 1. Test Suite (`test.yml`)
 
-   * **Triggers**: Push to main/develop branches, Pull requests
-   * **Purpose**: Runs comprehensive tests for all packages
-   * **Jobs**:
-      * Test tauri-plugin-mcp-bridge (Rust + TypeScript)
-      * Test @hypothesi/tauri-mcp-server (Node.js)
-      * Build test-app (Tauri application)
-      * Lint and standards checks (ESLint)
-   * **Matrix Testing**: Tests across multiple OS (Ubuntu, Windows, macOS) and Node.js versions (20, 24)
+**Triggers**: Push to main/develop branches, Pull requests
 
-### 2. Release (`release.yml`)
+**Purpose**: Runs comprehensive tests for all packages
 
-   * **Triggers**: Push tags matching:
-      * `v*` - Release all packages with the same version
-      * `tauri-plugin-mcp-bridge/v*` - Release only the plugin
-      * `mcp-server/v*` - Release only the server
-   * **Purpose**: Unified release workflow for all packages
-   * **Features**:
-      * Smart package detection based on tag format
-      * Can release individual packages or all packages
-      * Comprehensive testing before release
-      * Automatic version updates
-      * NPM provenance attestation for supply chain security
-   * **Process**:
+**Jobs**:
+- **test-plugin**: Test tauri-plugin-mcp-bridge (Rust + TypeScript)
+  - Matrix: Ubuntu 22.04, Windows, macOS
+  - Runs Rust tests, formatting checks, and Clippy
+- **test-server**: Test @hypothesi/tauri-mcp-server (Node.js)
+  - Matrix: Ubuntu, Windows, macOS × Node.js 20, 24
+  - Runs unit tests and TypeScript type checking
+- **test-app**: Build test-app (Tauri application)
+  - Matrix: Ubuntu 22.04, Windows, macOS
+  - Verifies the test app builds successfully
+- **lint-and-standards**: ESLint checks
+- **all-tests-pass**: Summary job that requires all tests to pass
 
+### 2. Release Packages (`release.yml`)
+
+**Triggers**: Push tags matching:
+- `v*` - Release all packages with the same version
+- `tauri-plugin-mcp-bridge/v*` - Release only the plugin
+- `mcp-server/v*` - Release only the server
+
+**Purpose**: Unified release workflow for all packages
+
+**Features**:
+- Smart package detection based on tag format
+- Can release individual packages or all packages
+- Comprehensive testing before release
+- Automatic version updates
+- npm provenance attestation for supply chain security (OIDC-based, no tokens needed)
+
+**Process**:
 1. Determine which packages to release based on tag
 2. Run tests across all platforms
 3. Update package versions
 4. Build TypeScript and/or Rust components
-5. Publish to npm (with provenance)
+5. Publish to npm with `--provenance` flag
 6. Publish to crates.io (if plugin)
 7. Create GitHub release with changelog
+
+### 3. Publish to MCP Registry (`publish-mcp-registry.yml`)
+
+**Triggers**: Automatically after "Release Packages" workflow completes successfully
+
+**Purpose**: Publish MCP server metadata to the official MCP Registry
+
+**Features**:
+- Depends on Release Packages workflow via `workflow_run`
+- Only runs if Release Packages succeeded
+- Uses OIDC authentication (no tokens needed)
+- Publishes only metadata (npm package already published by Release workflow)
+
+**Process**:
+1. Waits for Release Packages workflow to complete
+2. Installs mcp-publisher CLI
+3. Authenticates via GitHub OIDC
+4. Publishes server metadata to MCP Registry
+
+### 4. Deploy Documentation (`deploy-docs.yml`)
+
+**Triggers**:
+- Push to main branch (when docs/** or related files change)
+- Manual workflow dispatch
+
+**Purpose**: Build and deploy VitePress documentation to GitHub Pages
+
+**Process**:
+1. Build documentation with VitePress
+2. Upload to GitHub Pages
+3. Deploy to https://hypothesi.github.io/mcp-server-tauri/
 
 ## Required Secrets
 
 Before using the release workflows, configure these secrets in your GitHub repository settings:
 
-1. **NPM_TOKEN**: Authentication token for npm registry
+1. **CARGO_REGISTRY_TOKEN**: Authentication token for crates.io
+   - Get from: <https://crates.io/settings/tokens>
+   - Required for: Publishing Rust crates to crates.io
 
-   * Get from: <https://www.npmjs.com/settings/[username]/tokens>
-   * Required for: Publishing npm packages
+## npm Publishing Setup
 
-2. **CARGO_REGISTRY_TOKEN**: Authentication token for crates.io
-   * Get from: <https://crates.io/settings/tokens>
-   * Required for: Publishing Rust crates
+npm publishing uses **provenance** with OIDC authentication (no NPM_TOKEN needed):
+
+1. Configure npm Trusted Publisher at <https://www.npmjs.com/package/@hypothesi/tauri-mcp-server/access>:
+   - Provider: GitHub Actions
+   - Organization: hypothesi
+   - Repository: mcp-server-tauri
+   - Workflow: release.yml
+   - Environment: (leave empty)
+
+2. Ensure your GitHub organization membership is public at <https://github.com/orgs/hypothesi/people>
+
+This eliminates the need for NPM_TOKEN secrets and provides better supply chain security.
 
 ## Tag Formats
 
@@ -126,13 +177,45 @@ The workflows will automatically:
 
 The workflows require the following permissions:
 
-   * `contents: write` - For creating releases
-   * `id-token: write` - For npm provenance
+- **Test Suite**: Default permissions (read-only)
+- **Release Packages**:
+  - `contents: write` - For creating GitHub releases
+  - `id-token: write` - For npm provenance attestation
+- **Publish to MCP Registry**:
+  - `id-token: write` - For OIDC authentication with MCP Registry
+  - `contents: read` - For checking out code
+- **Deploy Documentation**:
+  - `contents: read` - For checking out code
+  - `pages: write` - For deploying to GitHub Pages
+  - `id-token: write` - For GitHub Pages deployment
 
 ## Best Practices
 
-1. Always run tests locally before pushing
-2. Update CHANGELOG.md before releases
-3. Use semantic versioning
-4. Test workflows in a fork first if making changes
-5. Monitor workflow runs for any failures
+1. Always run tests locally before pushing: `npm test`
+2. Update all three CHANGELOG.md files before releases (root, mcp-server, tauri-plugin-mcp-bridge)
+3. Use semantic versioning (MAJOR.MINOR.PATCH)
+4. Ensure versions are synchronized across package.json and Cargo.toml files
+5. The `server.json` version is automatically updated by the release workflow - no manual update needed
+6. Test workflows in a fork first if making changes
+7. Monitor workflow runs for any failures in the Actions tab
+8. The MCP Registry workflow runs automatically - no manual intervention needed
+
+## Troubleshooting
+
+### Release workflow fails at npm publish
+
+- Verify npm Trusted Publisher is configured correctly
+- Ensure the workflow name matches exactly: `release.yml`
+- Check that `id-token: write` permission is set
+
+### MCP Registry workflow doesn't trigger
+
+- Verify the Release Packages workflow completed successfully
+- Check that a version tag was pushed (not just created locally)
+- Ensure your GitHub organization membership is public
+
+### Tests fail in CI but pass locally
+
+- Check Node.js and Rust versions match between local and CI
+- Verify all dependencies are properly declared in package.json/Cargo.toml
+- Review platform-specific issues (Ubuntu 22.04, Windows, macOS)
