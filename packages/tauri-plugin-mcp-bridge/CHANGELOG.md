@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.5] - 2025-12-31
+
+### Added
+- Add `maxWidth` parameter to screenshot command for automatic image resizing
+- Add `image` crate dependency for PNG/JPEG image processing
+- Support `TAURI_MCP_SCREENSHOT_MAX_WIDTH` environment variable for default max width
+
 ## [0.6.4] - 2025-12-28
 
 _No changes to this package._

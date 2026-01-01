@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.5] - 2025-12-31
+
+### Added
+- Add `maxWidth` parameter to `tauri_webview_screenshot` tool for automatic image resizing
+- Support `TAURI_MCP_SCREENSHOT_MAX_WIDTH` environment variable for default max width
+
+### Fixed
+- Search common paths for `adb` when `ANDROID_HOME` is not set
+
 ## [0.6.4] - 2025-12-28
 
 ### Fixed
