@@ -4,11 +4,11 @@
 //! between the Tauri application and external MCP clients. It broadcasts events
 //! to all connected clients and can receive commands from them.
 
-use crate::commands::{resolve_window_with_context, WindowContext};
+use crate::commands::{self, resolve_window_with_context, ScriptExecutor, WindowContext};
 use crate::logging::{mcp_log_error, mcp_log_info};
 use crate::script_registry::{ScriptEntry, ScriptType, SharedScriptRegistry};
 use futures_util::{SinkExt, StreamExt};
-use serde_json;
+use serde_json::{self, Value};
 use std::net::SocketAddr;
 use tauri::{AppHandle, Manager, Runtime, WebviewWindow};
 use tokio::net::{TcpListener, TcpStream};
@@ -167,6 +167,445 @@ impl<R: Runtime> WebSocketServer<R> {
     }
 }
 
+/// Helper to create a success response JSON.
+fn success_response(id: &str, data: impl serde::Serialize) -> Value {
+    serde_json::json!({
+        "id": id,
+        "success": true,
+        "data": data
+    })
+}
+
+/// Helper to create an error response JSON.
+fn error_response(id: &str, error: impl std::fmt::Display) -> Value {
+    serde_json::json!({
+        "id": id,
+        "success": false,
+        "error": error.to_string()
+    })
+}
+
+/// Handles the invoke_tauri command which proxies Tauri IPC commands.
+async fn handle_invoke_tauri<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Value) -> Value {
+    let Some(tauri_cmd) = args.get("command").and_then(|v| v.as_str()) else {
+        return error_response(id, "Missing command in args");
+    };
+
+    let window_label = args
+        .get("args")
+        .and_then(|a| a.get("windowLabel"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    match tauri_cmd {
+        "plugin:mcp-bridge|get_window_info" => match commands::resolve_window(app, window_label) {
+            Ok(window) => match commands::get_window_info(window).await {
+                Ok(data) => success_response(id, data),
+                Err(e) => error_response(id, e),
+            },
+            Err(e) => error_response(id, e),
+        },
+        "plugin:mcp-bridge|get_backend_state" => {
+            match commands::get_backend_state(app.clone()).await {
+                Ok(data) => success_response(id, data),
+                Err(e) => error_response(id, e),
+            }
+        }
+        "plugin:mcp-bridge|start_ipc_monitor" => {
+            match commands::start_ipc_monitor(app.state()).await {
+                Ok(data) => success_response(id, data),
+                Err(e) => error_response(id, e),
+            }
+        }
+        "plugin:mcp-bridge|stop_ipc_monitor" => {
+            match commands::stop_ipc_monitor(app.state()).await {
+                Ok(data) => success_response(id, data),
+                Err(e) => error_response(id, e),
+            }
+        }
+        "plugin:mcp-bridge|get_ipc_events" => match commands::get_ipc_events(app.state()).await {
+            Ok(data) => success_response(id, data),
+            Err(e) => error_response(id, e),
+        },
+        "plugin:mcp-bridge|emit_event" => {
+            let Some(event_name) = args
+                .get("args")
+                .and_then(|a| a.get("eventName"))
+                .and_then(|v| v.as_str())
+            else {
+                return error_response(id, "Missing eventName in args");
+            };
+            let payload = args
+                .get("args")
+                .and_then(|a| a.get("payload"))
+                .cloned()
+                .unwrap_or(serde_json::json!(null));
+            match commands::emit_event(app.clone(), event_name.to_string(), payload).await {
+                Ok(data) => success_response(id, data),
+                Err(e) => error_response(id, e),
+            }
+        }
+        _ => error_response(id, format!("Unsupported Tauri command: {tauri_cmd}")),
+    }
+}
+
+/// Handles the list_windows command.
+async fn handle_list_windows<R: Runtime>(app: &AppHandle<R>, id: &str) -> Value {
+    match commands::list_windows(app.clone()).await {
+        Ok(data) => success_response(id, data),
+        Err(e) => error_response(id, e),
+    }
+}
+
+/// Handles the get_window_info command.
+async fn handle_get_window_info<R: Runtime>(
+    app: &AppHandle<R>,
+    id: &str,
+    command: &Value,
+) -> Value {
+    let window_id = command
+        .get("args")
+        .and_then(|a| a.get("windowId"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    match commands::resolve_window(app, window_id) {
+        Ok(window) => match commands::get_window_info(window).await {
+            Ok(data) => success_response(id, data),
+            Err(e) => error_response(id, e),
+        },
+        Err(e) => error_response(id, e),
+    }
+}
+
+/// Handles the execute_js command.
+async fn handle_execute_js<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Value) -> Value {
+    let Some(script) = args.get("script").and_then(|v| v.as_str()) else {
+        return error_response(id, "Missing script argument");
+    };
+
+    let window_label = args
+        .get("windowLabel")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    match resolve_window_with_context(app, window_label) {
+        Ok(resolved) => {
+            let executor_state: tauri::State<'_, ScriptExecutor> = app.state();
+            match commands::execute_js(resolved.window.clone(), script.to_string(), executor_state)
+                .await
+            {
+                Ok(result) => serde_json::json!({
+                    "id": id,
+                    "success": result.get("success").and_then(|v| v.as_bool()).unwrap_or(true),
+                    "data": result.get("data").cloned(),
+                    "error": result.get("error").and_then(|v| v.as_str()),
+                    "windowContext": resolved.context
+                }),
+                Err(e) => serde_json::json!({
+                    "id": id,
+                    "success": false,
+                    "error": e,
+                    "windowContext": resolved.context
+                }),
+            }
+        }
+        Err(e) => error_response(id, e),
+    }
+}
+
+/// Handles the capture_native_screenshot command.
+async fn handle_capture_screenshot<R: Runtime>(
+    app: &AppHandle<R>,
+    id: &str,
+    args: Option<&Value>,
+) -> Value {
+    let format = args
+        .and_then(|a| a.get("format"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let quality = args
+        .and_then(|a| a.get("quality"))
+        .and_then(|v| v.as_u64())
+        .map(|q| q as u8);
+    let max_width = args
+        .and_then(|a| a.get("maxWidth"))
+        .and_then(|v| v.as_u64())
+        .map(|w| w as u32);
+    let window_label = args
+        .and_then(|a| a.get("windowLabel"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    match resolve_window_with_context(app, window_label) {
+        Ok(resolved) => {
+            match commands::capture_native_screenshot(resolved.window, format, quality, max_width)
+                .await
+            {
+                Ok(data_url) => serde_json::json!({
+                    "id": id,
+                    "success": true,
+                    "data": data_url,
+                    "windowContext": resolved.context
+                }),
+                Err(e) => serde_json::json!({
+                    "id": id,
+                    "success": false,
+                    "error": e,
+                    "windowContext": resolved.context
+                }),
+            }
+        }
+        Err(e) => error_response(id, e),
+    }
+}
+
+/// Handles the resize_window command.
+async fn handle_resize_window<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Value) -> Value {
+    let width = args.get("width").and_then(|v| v.as_u64()).map(|w| w as u32);
+    let height = args
+        .get("height")
+        .and_then(|v| v.as_u64())
+        .map(|h| h as u32);
+    let window_id = args
+        .get("windowId")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let logical = args
+        .get("logical")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+
+    let (Some(w), Some(h)) = (width, height) else {
+        return error_response(id, "Missing width or height argument");
+    };
+
+    let params = commands::ResizeWindowParams {
+        width: w,
+        height: h,
+        window_id,
+        logical,
+    };
+
+    match commands::resize_window(app.clone(), params).await {
+        Ok(result) => serde_json::json!({
+            "id": id,
+            "success": result.success,
+            "data": result,
+            "error": result.error
+        }),
+        Err(e) => error_response(id, e),
+    }
+}
+
+/// Handles the register_script command.
+fn handle_register_script<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Value) -> Value {
+    let script_id = args.get("id").and_then(|v| v.as_str());
+    let script_type_str = args.get("type").and_then(|v| v.as_str());
+    let content = args.get("content").and_then(|v| v.as_str());
+
+    let (Some(id_str), Some(type_str), Some(content_str)) = (script_id, script_type_str, content)
+    else {
+        return error_response(id, "Missing required args: id, type, content");
+    };
+
+    let script_type = match type_str {
+        "url" => ScriptType::Url,
+        _ => ScriptType::Inline,
+    };
+
+    let entry = ScriptEntry {
+        id: id_str.to_string(),
+        script_type,
+        content: content_str.to_string(),
+    };
+
+    let registry: tauri::State<'_, SharedScriptRegistry> = app.state();
+    {
+        let mut reg = registry.lock().unwrap();
+        reg.add(entry.clone());
+    }
+
+    let window_label = args
+        .get("windowLabel")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    match inject_script_to_webview(app, &entry, window_label) {
+        Ok(result) => serde_json::json!({
+            "id": id,
+            "success": true,
+            "data": { "registered": true, "scriptId": id_str },
+            "windowContext": {
+                "windowLabel": result.window_context.window_label,
+                "totalWindows": result.window_context.total_windows,
+                "warning": result.window_context.warning
+            }
+        }),
+        Err(e) => error_response(id, e),
+    }
+}
+
+/// Handles the remove_script command.
+fn handle_remove_script<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Value) -> Value {
+    let Some(script_id) = args.get("id").and_then(|v| v.as_str()) else {
+        return error_response(id, "Missing script id");
+    };
+
+    let registry: tauri::State<'_, SharedScriptRegistry> = app.state();
+    let removed = {
+        let mut reg = registry.lock().unwrap();
+        reg.remove(script_id).is_some()
+    };
+
+    let window_label = args
+        .get("windowLabel")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    match remove_script_from_webview(app, script_id, window_label) {
+        Ok(result) => serde_json::json!({
+            "id": id,
+            "success": true,
+            "data": { "removed": removed, "scriptId": script_id },
+            "windowContext": {
+                "windowLabel": result.window_context.window_label,
+                "totalWindows": result.window_context.total_windows,
+                "warning": result.window_context.warning
+            }
+        }),
+        Err(e) => {
+            eprintln!("Failed to remove script from DOM: {e}");
+            serde_json::json!({
+                "id": id,
+                "success": true,
+                "data": { "removed": removed, "scriptId": script_id },
+                "error": format!("Script removed from registry but DOM removal failed: {e}")
+            })
+        }
+    }
+}
+
+/// Handles the clear_scripts command.
+fn handle_clear_scripts<R: Runtime>(app: &AppHandle<R>, id: &str, command: &Value) -> Value {
+    let registry: tauri::State<'_, SharedScriptRegistry> = app.state();
+    let count = {
+        let mut reg = registry.lock().unwrap();
+        let count = reg.len();
+        reg.clear();
+        count
+    };
+
+    let window_label = command
+        .get("args")
+        .and_then(|a| a.get("windowLabel"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    match clear_scripts_from_webview(app, window_label) {
+        Ok(result) => serde_json::json!({
+            "id": id,
+            "success": true,
+            "data": { "cleared": count },
+            "windowContext": {
+                "windowLabel": result.window_context.window_label,
+                "totalWindows": result.window_context.total_windows,
+                "warning": result.window_context.warning
+            }
+        }),
+        Err(e) => {
+            eprintln!("Failed to clear scripts from DOM: {e}");
+            serde_json::json!({
+                "id": id,
+                "success": true,
+                "data": { "cleared": count },
+                "error": format!("Scripts cleared from registry but DOM clear failed: {e}")
+            })
+        }
+    }
+}
+
+/// Handles the get_scripts command.
+fn handle_get_scripts<R: Runtime>(app: &AppHandle<R>, id: &str) -> Value {
+    let registry: tauri::State<'_, SharedScriptRegistry> = app.state();
+    let scripts: Vec<Value> = {
+        let reg = registry.lock().unwrap();
+        reg.get_all()
+            .iter()
+            .map(|entry| {
+                serde_json::json!({
+                    "id": entry.id,
+                    "type": match entry.script_type {
+                        ScriptType::Inline => "inline",
+                        ScriptType::Url => "url",
+                    },
+                    "content": entry.content
+                })
+            })
+            .collect()
+    };
+
+    serde_json::json!({
+        "id": id,
+        "success": true,
+        "data": { "scripts": scripts }
+    })
+}
+
+/// Dispatches a WebSocket command to the appropriate handler.
+async fn dispatch_command<R: Runtime>(app: &AppHandle<R>, command: &Value) -> Value {
+    let id = command.get("id").and_then(|v| v.as_str()).unwrap_or("");
+    let cmd_name = command
+        .get("command")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+    let args = command.get("args");
+
+    match cmd_name {
+        "invoke_tauri" => {
+            if let Some(args) = args {
+                handle_invoke_tauri(app, id, args).await
+            } else {
+                error_response(id, "Missing args for invoke_tauri")
+            }
+        }
+        "list_windows" => handle_list_windows(app, id).await,
+        "get_window_info" => handle_get_window_info(app, id, command).await,
+        "execute_js" => {
+            if let Some(args) = args {
+                handle_execute_js(app, id, args).await
+            } else {
+                error_response(id, "Missing args")
+            }
+        }
+        "capture_native_screenshot" => handle_capture_screenshot(app, id, args).await,
+        "resize_window" => {
+            if let Some(args) = args {
+                handle_resize_window(app, id, args).await
+            } else {
+                error_response(id, "Missing args for resize_window")
+            }
+        }
+        "register_script" => {
+            if let Some(args) = args {
+                handle_register_script(app, id, args)
+            } else {
+                error_response(id, "Missing args for register_script")
+            }
+        }
+        "remove_script" => {
+            if let Some(args) = args {
+                handle_remove_script(app, id, args)
+            } else {
+                error_response(id, "Missing args for remove_script")
+            }
+        }
+        "clear_scripts" => handle_clear_scripts(app, id, command),
+        "get_scripts" => handle_get_scripts(app, id),
+        _ => error_response(id, format!("Unknown command: {cmd_name}")),
+    }
+}
+
 /// Handles a single WebSocket client connection.
 ///
 /// This function manages the lifecycle of a WebSocket connection, including:
@@ -193,21 +632,17 @@ async fn handle_connection<R: Runtime>(
     let (mut ws_sender, mut ws_receiver) = ws_stream.split();
     let mut event_rx = event_tx.subscribe();
 
-    // Create channel for sending responses from receive task to send task
     let (response_tx, mut response_rx) = mpsc::unbounded_channel::<String>();
 
-    // Spawn task to handle outgoing messages (both broadcasts and responses)
     let send_task = tokio::spawn(async move {
         loop {
             tokio::select! {
-                // Handle broadcast events
                 Ok(msg) = event_rx.recv() => {
                     if let Err(e) = ws_sender.send(Message::Text(msg.into())).await {
                         eprintln!("Failed to send broadcast: {e}");
                         break;
                     }
                 }
-                // Handle responses to client requests
                 Some(response) = response_rx.recv() => {
                     if let Err(e) = ws_sender.send(Message::Text(response.into())).await {
                         eprintln!("Failed to send response: {e}");
@@ -219,580 +654,11 @@ async fn handle_connection<R: Runtime>(
         }
     });
 
-    // Handle incoming messages from client (request/response)
     while let Some(msg) = ws_receiver.next().await {
         match msg {
             Ok(Message::Text(text)) => {
-                // Parse incoming command and send response
-                if let Ok(command) = serde_json::from_str::<serde_json::Value>(&text) {
-                    let id = command.get("id").and_then(|v| v.as_str()).unwrap_or("");
-                    let cmd_name = command
-                        .get("command")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("unknown");
-
-                    // Handle commands
-                    let response = if cmd_name == "invoke_tauri" {
-                        // Handle Tauri IPC command invocation
-                        if let Some(args) = command.get("args") {
-                            if let Some(tauri_cmd) = args.get("command").and_then(|v| v.as_str()) {
-                                // Call the actual Tauri commands
-                                use crate::commands;
-
-                                // Get optional window_label from args for window targeting
-                                let window_label = args
-                                    .get("args")
-                                    .and_then(|a| a.get("windowLabel"))
-                                    .and_then(|v| v.as_str())
-                                    .map(|s| s.to_string());
-
-                                match tauri_cmd {
-                                    "plugin:mcp-bridge|get_window_info" => {
-                                        match commands::resolve_window(&app, window_label.clone()) {
-                                            Ok(window) => {
-                                                match commands::get_window_info(window).await {
-                                                    Ok(data) => serde_json::json!({
-                                                        "id": id,
-                                                        "success": true,
-                                                        "data": data
-                                                    }),
-                                                    Err(e) => serde_json::json!({
-                                                        "id": id,
-                                                        "success": false,
-                                                        "error": e
-                                                    }),
-                                                }
-                                            }
-                                            Err(e) => serde_json::json!({
-                                                "id": id,
-                                                "success": false,
-                                                "error": e
-                                            }),
-                                        }
-                                    }
-                                    "plugin:mcp-bridge|get_backend_state" => {
-                                        match commands::get_backend_state(app.clone()).await {
-                                            Ok(data) => serde_json::json!({
-                                                "id": id,
-                                                "success": true,
-                                                "data": data
-                                            }),
-                                            Err(e) => serde_json::json!({
-                                                "id": id,
-                                                "success": false,
-                                                "error": e
-                                            }),
-                                        }
-                                    }
-                                    "plugin:mcp-bridge|start_ipc_monitor" => {
-                                        match commands::start_ipc_monitor(app.state()).await {
-                                            Ok(data) => serde_json::json!({
-                                                "id": id,
-                                                "success": true,
-                                                "data": data
-                                            }),
-                                            Err(e) => serde_json::json!({
-                                                "id": id,
-                                                "success": false,
-                                                "error": e
-                                            }),
-                                        }
-                                    }
-                                    "plugin:mcp-bridge|stop_ipc_monitor" => {
-                                        match commands::stop_ipc_monitor(app.state()).await {
-                                            Ok(data) => serde_json::json!({
-                                                "id": id,
-                                                "success": true,
-                                                "data": data
-                                            }),
-                                            Err(e) => serde_json::json!({
-                                                "id": id,
-                                                "success": false,
-                                                "error": e
-                                            }),
-                                        }
-                                    }
-                                    "plugin:mcp-bridge|get_ipc_events" => {
-                                        match commands::get_ipc_events(app.state()).await {
-                                            Ok(data) => serde_json::json!({
-                                                "id": id,
-                                                "success": true,
-                                                "data": data
-                                            }),
-                                            Err(e) => serde_json::json!({
-                                                "id": id,
-                                                "success": false,
-                                                "error": e
-                                            }),
-                                        }
-                                    }
-                                    "plugin:mcp-bridge|emit_event" => {
-                                        if let Some(event_name) = args
-                                            .get("args")
-                                            .and_then(|a| a.get("eventName"))
-                                            .and_then(|v| v.as_str())
-                                        {
-                                            let payload = args
-                                                .get("args")
-                                                .and_then(|a| a.get("payload"))
-                                                .cloned()
-                                                .unwrap_or(serde_json::json!(null));
-                                            match commands::emit_event(
-                                                app.clone(),
-                                                event_name.to_string(),
-                                                payload,
-                                            )
-                                            .await
-                                            {
-                                                Ok(data) => serde_json::json!({
-                                                    "id": id,
-                                                    "success": true,
-                                                    "data": data
-                                                }),
-                                                Err(e) => serde_json::json!({
-                                                    "id": id,
-                                                    "success": false,
-                                                    "error": e
-                                                }),
-                                            }
-                                        } else {
-                                            serde_json::json!({
-                                                "id": id,
-                                                "success": false,
-                                                "error": "Missing eventName in args"
-                                            })
-                                        }
-                                    }
-                                    _ => {
-                                        serde_json::json!({
-                                            "id": id,
-                                            "success": false,
-                                            "error": format!("Unsupported Tauri command: {}", tauri_cmd)
-                                        })
-                                    }
-                                }
-                            } else {
-                                serde_json::json!({
-                                    "id": id,
-                                    "success": false,
-                                    "error": "Missing command in args"
-                                })
-                            }
-                        } else {
-                            serde_json::json!({
-                                "id": id,
-                                "success": false,
-                                "error": "Missing args for invoke_tauri"
-                            })
-                        }
-                    } else if cmd_name == "list_windows" {
-                        // Handle window listing
-                        match crate::commands::list_windows(app.clone()).await {
-                            Ok(data) => serde_json::json!({
-                                "id": id,
-                                "success": true,
-                                "data": data
-                            }),
-                            Err(e) => serde_json::json!({
-                                "id": id,
-                                "success": false,
-                                "error": e
-                            }),
-                        }
-                    } else if cmd_name == "get_window_info" {
-                        // Handle window info retrieval
-                        let window_id = command
-                            .get("args")
-                            .and_then(|a| a.get("windowId"))
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string());
-
-                        match crate::commands::resolve_window(&app, window_id) {
-                            Ok(window) => match crate::commands::get_window_info(window).await {
-                                Ok(data) => serde_json::json!({
-                                    "id": id,
-                                    "success": true,
-                                    "data": data
-                                }),
-                                Err(e) => serde_json::json!({
-                                    "id": id,
-                                    "success": false,
-                                    "error": e
-                                }),
-                            },
-                            Err(e) => serde_json::json!({
-                                "id": id,
-                                "success": false,
-                                "error": e
-                            }),
-                        }
-                    } else if cmd_name == "execute_js" {
-                        if let Some(args) = command.get("args") {
-                            if let Some(script) = args.get("script").and_then(|v| v.as_str()) {
-                                // Get optional window_label, defaulting to "main"
-                                let window_label = args
-                                    .get("windowLabel")
-                                    .and_then(|v| v.as_str())
-                                    .map(|s| s.to_string());
-
-                                // Resolve the target window with context
-                                match crate::commands::resolve_window_with_context(
-                                    &app,
-                                    window_label,
-                                ) {
-                                    Ok(resolved) => {
-                                        // Get the script executor state and create State wrapper
-                                        let executor_state =
-                                            app.state::<crate::commands::ScriptExecutor>();
-                                        // Call the execute_js command with state
-                                        match crate::commands::execute_js(
-                                            resolved.window.clone(),
-                                            script.to_string(),
-                                            executor_state,
-                                        )
-                                        .await
-                                        {
-                                            Ok(result) => {
-                                                serde_json::json!({
-                                                    "id": id,
-                                                    "success": result.get("success").and_then(|v| v.as_bool()).unwrap_or(true),
-                                                    "data": result.get("data").cloned(),
-                                                    "error": result.get("error").and_then(|v| v.as_str()),
-                                                    "windowContext": resolved.context
-                                                })
-                                            }
-                                            Err(e) => {
-                                                serde_json::json!({
-                                                    "id": id,
-                                                    "success": false,
-                                                    "error": e,
-                                                    "windowContext": resolved.context
-                                                })
-                                            }
-                                        }
-                                    }
-                                    Err(e) => {
-                                        serde_json::json!({
-                                            "id": id,
-                                            "success": false,
-                                            "error": e
-                                        })
-                                    }
-                                }
-                            } else {
-                                serde_json::json!({
-                                    "id": id,
-                                    "success": false,
-                                    "error": "Missing script argument"
-                                })
-                            }
-                        } else {
-                            serde_json::json!({
-                                "id": id,
-                                "success": false,
-                                "error": "Missing args"
-                            })
-                        }
-                    } else if cmd_name == "capture_native_screenshot" {
-                        // Handle native screenshot capture
-                        let args = command.get("args");
-                        let format = args
-                            .and_then(|a| a.get("format"))
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string());
-                        let quality = args
-                            .and_then(|a| a.get("quality"))
-                            .and_then(|v| v.as_u64())
-                            .map(|q| q as u8);
-                        let max_width = args
-                            .and_then(|a| a.get("maxWidth"))
-                            .and_then(|v| v.as_u64())
-                            .map(|w| w as u32);
-                        let window_label = args
-                            .and_then(|a| a.get("windowLabel"))
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string());
-
-                        // Resolve the target window with context
-                        match crate::commands::resolve_window_with_context(&app, window_label) {
-                            Ok(resolved) => {
-                                match crate::commands::capture_native_screenshot(
-                                    resolved.window,
-                                    format,
-                                    quality,
-                                    max_width,
-                                )
-                                .await
-                                {
-                                    Ok(data_url) => {
-                                        serde_json::json!({
-                                            "id": id,
-                                            "success": true,
-                                            "data": data_url,
-                                            "windowContext": resolved.context
-                                        })
-                                    }
-                                    Err(e) => {
-                                        serde_json::json!({
-                                            "id": id,
-                                            "success": false,
-                                            "error": e,
-                                            "windowContext": resolved.context
-                                        })
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                serde_json::json!({
-                                    "id": id,
-                                    "success": false,
-                                    "error": e
-                                })
-                            }
-                        }
-                    } else if cmd_name == "resize_window" {
-                        // Handle window resize
-                        if let Some(args) = command.get("args") {
-                            let width =
-                                args.get("width").and_then(|v| v.as_u64()).map(|w| w as u32);
-                            let height = args
-                                .get("height")
-                                .and_then(|v| v.as_u64())
-                                .map(|h| h as u32);
-                            let window_id = args
-                                .get("windowId")
-                                .and_then(|v| v.as_str())
-                                .map(|s| s.to_string());
-                            let logical = args
-                                .get("logical")
-                                .and_then(|v| v.as_bool())
-                                .unwrap_or(true);
-
-                            match (width, height) {
-                                (Some(w), Some(h)) => {
-                                    let params = crate::commands::ResizeWindowParams {
-                                        width: w,
-                                        height: h,
-                                        window_id,
-                                        logical,
-                                    };
-
-                                    match crate::commands::resize_window(app.clone(), params).await
-                                    {
-                                        Ok(result) => serde_json::json!({
-                                            "id": id,
-                                            "success": result.success,
-                                            "data": result,
-                                            "error": result.error
-                                        }),
-                                        Err(e) => serde_json::json!({
-                                            "id": id,
-                                            "success": false,
-                                            "error": e
-                                        }),
-                                    }
-                                }
-                                _ => serde_json::json!({
-                                    "id": id,
-                                    "success": false,
-                                    "error": "Missing width or height argument"
-                                }),
-                            }
-                        } else {
-                            serde_json::json!({
-                                "id": id,
-                                "success": false,
-                                "error": "Missing args for resize_window"
-                            })
-                        }
-                    } else if cmd_name == "register_script" {
-                        // Handle script registration
-                        if let Some(args) = command.get("args") {
-                            let script_id = args.get("id").and_then(|v| v.as_str());
-                            let script_type_str = args.get("type").and_then(|v| v.as_str());
-                            let content = args.get("content").and_then(|v| v.as_str());
-
-                            match (script_id, script_type_str, content) {
-                                (Some(id_str), Some(type_str), Some(content_str)) => {
-                                    let script_type = match type_str {
-                                        "url" => ScriptType::Url,
-                                        _ => ScriptType::Inline,
-                                    };
-
-                                    let entry = ScriptEntry {
-                                        id: id_str.to_string(),
-                                        script_type,
-                                        content: content_str.to_string(),
-                                    };
-
-                                    // Add to registry
-                                    let registry: tauri::State<'_, SharedScriptRegistry> =
-                                        app.state();
-                                    {
-                                        let mut reg = registry.lock().unwrap();
-                                        reg.add(entry.clone());
-                                    }
-
-                                    // Inject the script into the webview
-                                    let window_label = args
-                                        .get("windowLabel")
-                                        .and_then(|v| v.as_str())
-                                        .map(|s| s.to_string());
-
-                                    match inject_script_to_webview(&app, &entry, window_label) {
-                                        Ok(result) => serde_json::json!({
-                                            "id": id,
-                                            "success": true,
-                                            "data": { "registered": true, "scriptId": id_str },
-                                            "windowContext": {
-                                                "windowLabel": result.window_context.window_label,
-                                                "totalWindows": result.window_context.total_windows,
-                                                "warning": result.window_context.warning
-                                            }
-                                        }),
-                                        Err(e) => serde_json::json!({
-                                            "id": id,
-                                            "success": false,
-                                            "error": e
-                                        }),
-                                    }
-                                }
-                                _ => serde_json::json!({
-                                    "id": id,
-                                    "success": false,
-                                    "error": "Missing required args: id, type, content"
-                                }),
-                            }
-                        } else {
-                            serde_json::json!({
-                                "id": id,
-                                "success": false,
-                                "error": "Missing args for register_script"
-                            })
-                        }
-                    } else if cmd_name == "remove_script" {
-                        // Handle script removal
-                        if let Some(args) = command.get("args") {
-                            if let Some(script_id) = args.get("id").and_then(|v| v.as_str()) {
-                                let registry: tauri::State<'_, SharedScriptRegistry> = app.state();
-                                let removed = {
-                                    let mut reg = registry.lock().unwrap();
-                                    reg.remove(script_id).is_some()
-                                };
-
-                                // Remove from DOM
-                                let window_label = args
-                                    .get("windowLabel")
-                                    .and_then(|v| v.as_str())
-                                    .map(|s| s.to_string());
-
-                                match remove_script_from_webview(&app, script_id, window_label) {
-                                    Ok(result) => serde_json::json!({
-                                        "id": id,
-                                        "success": true,
-                                        "data": { "removed": removed, "scriptId": script_id },
-                                        "windowContext": {
-                                            "windowLabel": result.window_context.window_label,
-                                            "totalWindows": result.window_context.total_windows,
-                                            "warning": result.window_context.warning
-                                        }
-                                    }),
-                                    Err(e) => {
-                                        eprintln!("Failed to remove script from DOM: {e}");
-                                        serde_json::json!({
-                                            "id": id,
-                                            "success": true,
-                                            "data": { "removed": removed, "scriptId": script_id },
-                                            "error": format!("Script removed from registry but DOM removal failed: {e}")
-                                        })
-                                    }
-                                }
-                            } else {
-                                serde_json::json!({
-                                    "id": id,
-                                    "success": false,
-                                    "error": "Missing script id"
-                                })
-                            }
-                        } else {
-                            serde_json::json!({
-                                "id": id,
-                                "success": false,
-                                "error": "Missing args for remove_script"
-                            })
-                        }
-                    } else if cmd_name == "clear_scripts" {
-                        // Handle clearing all scripts
-                        let registry: tauri::State<'_, SharedScriptRegistry> = app.state();
-                        let count = {
-                            let mut reg = registry.lock().unwrap();
-                            let count = reg.len();
-                            reg.clear();
-                            count
-                        };
-
-                        // Clear from DOM
-                        let window_label = command
-                            .get("args")
-                            .and_then(|a| a.get("windowLabel"))
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string());
-
-                        match clear_scripts_from_webview(&app, window_label) {
-                            Ok(result) => serde_json::json!({
-                                "id": id,
-                                "success": true,
-                                "data": { "cleared": count },
-                                "windowContext": {
-                                    "windowLabel": result.window_context.window_label,
-                                    "totalWindows": result.window_context.total_windows,
-                                    "warning": result.window_context.warning
-                                }
-                            }),
-                            Err(e) => {
-                                eprintln!("Failed to clear scripts from DOM: {e}");
-                                serde_json::json!({
-                                    "id": id,
-                                    "success": true,
-                                    "data": { "cleared": count },
-                                    "error": format!("Scripts cleared from registry but DOM clear failed: {e}")
-                                })
-                            }
-                        }
-                    } else if cmd_name == "get_scripts" {
-                        // Handle getting all registered scripts
-                        let registry: tauri::State<'_, SharedScriptRegistry> = app.state();
-                        let scripts: Vec<serde_json::Value> = {
-                            let reg = registry.lock().unwrap();
-                            reg.get_all()
-                                .iter()
-                                .map(|entry| {
-                                    serde_json::json!({
-                                        "id": entry.id,
-                                        "type": match entry.script_type {
-                                            ScriptType::Inline => "inline",
-                                            ScriptType::Url => "url",
-                                        },
-                                        "content": entry.content
-                                    })
-                                })
-                                .collect()
-                        };
-
-                        serde_json::json!({
-                            "id": id,
-                            "success": true,
-                            "data": { "scripts": scripts }
-                        })
-                    } else {
-                        // Unknown command
-                        serde_json::json!({
-                            "id": id,
-                            "success": false,
-                            "error": format!("Unknown command: {}", cmd_name)
-                        })
-                    };
-
+                if let Ok(command) = serde_json::from_str::<Value>(&text) {
+                    let response = dispatch_command(&app, &command).await;
                     let _ = response_tx.send(response.to_string());
                 } else {
                     eprintln!("Failed to parse command: {text}");

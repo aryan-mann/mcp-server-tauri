@@ -81,3 +81,6 @@ jni = "0.21"
 
 [build-dependencies]
 tauri-plugin = { version = "2", features = ["build"] }
+
+[lints.clippy]
+too_many_lines = "warn"
