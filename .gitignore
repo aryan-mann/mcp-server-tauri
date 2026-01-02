@@ -36,6 +36,7 @@ docs/.vitepress/dist
 specs/plans
 .windsurf
 .aix
+ai.json
 
 # Test artifacts
 packages/mcp-server/.test-app-port
