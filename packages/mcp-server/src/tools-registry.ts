@@ -25,6 +25,7 @@ import {
    WaitForSchema, GetStylesSchema, ExecuteJavaScriptSchema,
    FindElementSchema,
 } from './driver/webview-interactions.js';
+import { PLUGIN_VERSION_CARGO } from './version.js';
 
 /**
  * Standard multi-app description for webview tools.
@@ -124,7 +125,7 @@ Examine these files and report what needs to be added or updated:
 Check \`src-tauri/Cargo.toml\` for \`tauri-plugin-mcp-bridge\`. If missing or outdated, note that it needs:
 \`\`\`toml
 [dependencies]
-tauri-plugin-mcp-bridge = "0.4"
+tauri-plugin-mcp-bridge = "${PLUGIN_VERSION_CARGO}"
 \`\`\`
 
 ### 2. Plugin Registration

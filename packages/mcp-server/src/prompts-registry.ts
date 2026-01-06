@@ -3,6 +3,8 @@
  * Prompts are user-controlled templates that appear as slash commands in MCP clients
  */
 
+import { PLUGIN_VERSION_CARGO } from './version.js';
+
 export interface PromptArgument {
    name: string;
    description: string;
@@ -72,7 +74,7 @@ Examine these files and report what needs to be added or updated:
 Check \`src-tauri/Cargo.toml\` for \`tauri-plugin-mcp-bridge\`. If missing or outdated, note that it needs:
 \`\`\`toml
 [dependencies]
-tauri-plugin-mcp-bridge = "0.4"
+tauri-plugin-mcp-bridge = "${PLUGIN_VERSION_CARGO}"
 \`\`\`
 
 ### 2. Plugin Registration

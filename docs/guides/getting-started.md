@@ -35,7 +35,7 @@ Examine these files and report what needs to be added or updated:
 Check \`src-tauri/Cargo.toml\` for \`tauri-plugin-mcp-bridge\`. If missing or outdated, note that it needs:
 \`\`\`toml
 [dependencies]
-tauri-plugin-mcp-bridge = "0.4"
+tauri-plugin-mcp-bridge = "${versions.plugin.cargo}"
 \`\`\`
 
 ### 2. Plugin Registration
