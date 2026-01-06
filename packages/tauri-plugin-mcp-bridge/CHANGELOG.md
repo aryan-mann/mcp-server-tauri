@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed compilation error on Android and iOS caused by desktop-only `set_size()` and `is_resizable()` APIs
+- Window resize requests on mobile now return a graceful error message instead of failing to compile
+
 ## [0.6.5] - 2025-12-31
 
 ### Added

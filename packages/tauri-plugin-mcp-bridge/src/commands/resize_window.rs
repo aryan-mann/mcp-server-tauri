@@ -1,8 +1,12 @@
 //! Window resize functionality.
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, LogicalSize, PhysicalSize, Runtime};
+use tauri::{AppHandle, Runtime};
 
+#[cfg(desktop)]
+use tauri::{LogicalSize, PhysicalSize};
+
+#[cfg(desktop)]
 use super::list_windows::resolve_window;
 
 /// Parameters for resizing a window.
@@ -59,6 +63,8 @@ pub struct ResizeWindowResult {
 /// - Uses logical pixels by default (respects display scaling)
 /// - Set `logical: false` to use physical pixels
 /// - The resize may fail if the window has fixed size constraints
+/// - On mobile platforms (Android/iOS), this operation is not supported and returns an error
+#[cfg(desktop)]
 pub async fn resize_window<R: Runtime>(
     app: AppHandle<R>,
     params: ResizeWindowParams,
@@ -107,4 +113,29 @@ pub async fn resize_window<R: Runtime>(
             error: Some(format!("Failed to resize window: {e}")),
         }),
     }
+}
+
+/// Mobile implementation - returns unsupported error with clear explanation for the agent.
+#[cfg(mobile)]
+pub async fn resize_window<R: Runtime>(
+    _app: AppHandle<R>,
+    params: ResizeWindowParams,
+) -> Result<ResizeWindowResult, String> {
+    let window_label = params
+        .window_id
+        .clone()
+        .unwrap_or_else(|| "main".to_string());
+
+    Ok(ResizeWindowResult {
+        success: false,
+        window_label,
+        width: params.width,
+        height: params.height,
+        logical: params.logical,
+        error: Some(
+            "Window resizing is not supported on mobile platforms (Android/iOS). \
+             The window size is controlled by the operating system."
+                .to_string(),
+        ),
+    })
 }
