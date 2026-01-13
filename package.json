@@ -24,7 +24,7 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "standards": "npm run commitlint && npm run eslint",
-    "commitlint": "commitlint --from d884a42",
+    "commitlint": "commitlint --from 3bf70b4",
     "eslint": "eslint .",
     "release:plugin": "node scripts/release-package.js plugin",
     "release:server": "node scripts/release-package.js server",
