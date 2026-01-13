@@ -28,7 +28,7 @@
     "url": "https://github.com/aryan-mann/mcp-server-tauri.git",
     "directory": "packages/tauri-plugin-mcp-bridge"
   },
-  "author": "hypothesi",
+  "author": "aryan-mann",
   "license": "MIT",
   "keywords": [
     "tauri",
