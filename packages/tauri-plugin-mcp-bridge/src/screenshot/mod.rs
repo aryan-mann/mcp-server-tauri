@@ -110,8 +110,8 @@ fn resize_if_needed(
     Ok(buffer.into_inner())
 }
 
-/// Convert image data to the requested format (PNG or JPEG).
-/// If data is already in the requested format, returns it unchanged.
+/// Convert PNG data (from platform implementations) to the requested format.
+/// Platform implementations always return PNG, so this converts to JPEG if needed.
 fn convert_format(
     data: Vec<u8>,
     format: &str,
@@ -122,7 +122,7 @@ fn convert_format(
         return Ok(data);
     }
 
-    // Convert to JPEG
+    // Convert to JPEG (handles any format other than PNG, though only JPEG is expected)
     convert_to_jpeg(data, quality)
 }
 

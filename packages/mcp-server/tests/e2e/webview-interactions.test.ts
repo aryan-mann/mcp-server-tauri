@@ -17,6 +17,9 @@ import { getTestAppPort } from '../test-utils';
 describe('Webview Interactions E2E Tests', () => {
    const TIMEOUT = 10000;
 
+   // Shared type for content items used across tests
+   type ContentItem = { type: string; text?: string; data?: string; mimeType?: string };
+
    beforeAll(async () => {
       // App is already started globally - connect to the dynamically assigned port
       await manageDriverSession('start', undefined, getTestAppPort());
@@ -86,7 +89,6 @@ describe('Webview Interactions E2E Tests', () => {
          expect(result.content.length).toBeGreaterThanOrEqual(2);
 
          // First item should be text context
-         type ContentItem = { type: string; text?: string; data?: string; mimeType?: string };
          const textContent = result.content.find((c: ContentItem) => { return c.type === 'text'; }) as ContentItem | undefined;
 
          expect(textContent).toBeDefined();
@@ -125,7 +127,6 @@ describe('Webview Interactions E2E Tests', () => {
             throw new Error('Expected ScreenshotResult with content');
          }
 
-         type ContentItem = { type: string; text?: string; data?: string; mimeType?: string };
          const imageContent = result.content.find((c: ContentItem) => { return c.type === 'image'; }) as ContentItem | undefined;
 
          expect(imageContent).toBeDefined();
@@ -156,7 +157,6 @@ describe('Webview Interactions E2E Tests', () => {
             throw new Error('Expected ScreenshotResult with content');
          }
 
-         type ContentItem = { type: string; text?: string; data?: string; mimeType?: string };
          const originalImage = originalResult.content.find((c: ContentItem) => { return c.type === 'image'; }) as ContentItem | undefined;
 
          // Take another screenshot with very large maxWidth
@@ -197,7 +197,6 @@ describe('Webview Interactions E2E Tests', () => {
             throw new Error('Expected ScreenshotResult with content');
          }
 
-         type ContentItem = { type: string; text?: string; data?: string; mimeType?: string };
          const imageContent = result.content.find((c: ContentItem) => { return c.type === 'image'; }) as ContentItem | undefined;
 
          expect(imageContent).toBeDefined();
@@ -230,7 +229,6 @@ describe('Webview Interactions E2E Tests', () => {
             throw new Error('Expected ScreenshotResult with content');
          }
 
-         type ContentItem = { type: string; text?: string; data?: string; mimeType?: string };
          const imageContent = result.content.find((c: ContentItem) => { return c.type === 'image'; }) as ContentItem | undefined;
 
          expect(imageContent).toBeDefined();
