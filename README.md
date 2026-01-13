@@ -49,11 +49,11 @@ Use [install-mcp](https://www.npmjs.com/package/install-mcp) to add the server t
 npx -y install-mcp @hypothesi/tauri-mcp-server --client claude-code
 ```
 
-Alternatively, you can run directly from GitHub:
+Alternatively, you can run directly from GitHub without publishing to npm:
 
 ```bash
 npx -y aryan-mann:mcp-server-tauri
-# or
+# or use the full format
 npx -y github:aryan-mann/mcp-server-tauri
 ```
 
