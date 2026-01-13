@@ -1,11 +1,11 @@
 # @hypothesi/tauri-mcp-server
 
 [![npm version](https://img.shields.io/npm/v/@hypothesi/tauri-mcp-server)](https://www.npmjs.com/package/@hypothesi/tauri-mcp-server)
-[![License: MIT](https://img.shields.io/badge/License-MIT-8b5cf6.svg)](https://github.com/hypothesi/mcp-server-tauri/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-8b5cf6.svg)](https://github.com/aryan-mann/mcp-server-tauri/blob/main/LICENSE)
 
 A **Model Context Protocol (MCP) server** that enables AI assistants like Claude, Cursor, and Windsurf to build, test, and debug Tauri® v2 applications.
 
-📖 **[Full Documentation](https://hypothesi.github.io/mcp-server-tauri)**
+📖 **[Full Documentation](https://aryan-mann.github.io/mcp-server-tauri)**
 
 ## Features
 
