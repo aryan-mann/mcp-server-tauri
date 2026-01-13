@@ -188,6 +188,66 @@ describe('Webview Interactions E2E Tests', () => {
             }
          }
       }, TIMEOUT);
+
+      it('should capture screenshot in JPEG format with valid base64 data', async () => {
+         const result = await screenshot({ format: 'jpeg', quality: 80 });
+
+         expect('content' in result).toBe(true);
+         if (!('content' in result)) {
+            throw new Error('Expected ScreenshotResult with content');
+         }
+
+         type ContentItem = { type: string; text?: string; data?: string; mimeType?: string };
+         const imageContent = result.content.find((c: ContentItem) => { return c.type === 'image'; }) as ContentItem | undefined;
+
+         expect(imageContent).toBeDefined();
+         expect(imageContent?.type).toBe('image');
+
+         if (imageContent?.type === 'image' && imageContent.data) {
+            // Verify MIME type is correct
+            expect(imageContent.mimeType).toBe('image/jpeg');
+
+            // Verify it's valid base64
+            const buffer = Buffer.from(imageContent.data, 'base64');
+
+            expect(buffer.length).toBeGreaterThan(0);
+
+            // Verify it's actually JPEG data (starts with JPEG SOI marker 0xFF 0xD8)
+            expect(buffer[0]).toBe(0xFF);
+            expect(buffer[1]).toBe(0xD8);
+
+            // Verify it ends with JPEG EOI marker (0xFF 0xD9)
+            expect(buffer[buffer.length - 2]).toBe(0xFF);
+            expect(buffer[buffer.length - 1]).toBe(0xD9);
+         }
+      }, TIMEOUT);
+
+      it('should capture screenshot in JPEG format with resizing', async () => {
+         const result = await screenshot({ format: 'jpeg', quality: 80, maxWidth: 200 });
+
+         expect('content' in result).toBe(true);
+         if (!('content' in result)) {
+            throw new Error('Expected ScreenshotResult with content');
+         }
+
+         type ContentItem = { type: string; text?: string; data?: string; mimeType?: string };
+         const imageContent = result.content.find((c: ContentItem) => { return c.type === 'image'; }) as ContentItem | undefined;
+
+         expect(imageContent).toBeDefined();
+         expect(imageContent?.type).toBe('image');
+
+         if (imageContent?.type === 'image' && imageContent.data) {
+            // Verify MIME type is correct
+            expect(imageContent.mimeType).toBe('image/jpeg');
+
+            // Verify it's valid base64 and JPEG data
+            const buffer = Buffer.from(imageContent.data, 'base64');
+
+            // Verify it's actually JPEG data (starts with JPEG SOI marker 0xFF 0xD8)
+            expect(buffer[0]).toBe(0xFF);
+            expect(buffer[1]).toBe(0xD8);
+         }
+      }, TIMEOUT);
    });
 
    describe('Keyboard Interactions', () => {
