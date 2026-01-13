@@ -46,6 +46,14 @@
     "windsurf",
     "vscode"
   ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "0.6.1",
+    "execa": "9.6.0",
+    "html2canvas": "1.4.1",
+    "ws": "8.18.3",
+    "zod": "3.25.76",
+    "zod-to-json-schema": "3.25.0"
+  },
   "devDependencies": {
     "@commitlint/cli": "12.1.1",
     "@silvermine/eslint-config": "github:silvermine/eslint-config-silvermine#3d0c92ca8d18c4bb66d7b01cf226b1963cbd1319",
