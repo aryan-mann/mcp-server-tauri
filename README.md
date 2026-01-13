@@ -49,6 +49,14 @@ Use [install-mcp](https://www.npmjs.com/package/install-mcp) to add the server t
 npx -y install-mcp @hypothesi/tauri-mcp-server --client claude-code
 ```
 
+Alternatively, you can run directly from GitHub:
+
+```bash
+npx -y aryan-mann:mcp-server-tauri
+# or
+npx -y github:aryan-mann/mcp-server-tauri
+```
+
 Supported clients: `claude-code`, `cursor`, `windsurf`, `vscode`, `cline`, `roo-cline`, `claude`, `zed`, `goose`, `warp`, `codex`
 
 <details>
