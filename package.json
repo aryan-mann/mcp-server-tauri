@@ -1,13 +1,18 @@
 {
-  "name": "mcp-server-tauri-workspace",
-  "private": true,
+  "name": "mcp-server-tauri",
+  "version": "0.7.0",
+  "description": "A Model Context Protocol server for use with Tauri v2 applications",
   "type": "module",
+  "bin": {
+    "mcp-server-tauri": "./packages/mcp-server/dist/index.js"
+  },
   "workspaces": [
     "packages/tauri-plugin-mcp-bridge",
     "packages/mcp-server",
     "packages/test-app"
   ],
   "scripts": {
+    "prepare": "husky && npm run build:server",
     "dev": "concurrently -n server,app -c blue,green \"npm run dev -w @hypothesi/tauri-mcp-server\" \"npm run tauri dev -w test-app\"",
     "build": "npm run build --workspaces",
     "build:plugin": "npm run build -w @hypothesi/tauri-plugin-mcp-bridge",
@@ -19,11 +24,35 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "standards": "npm run commitlint && npm run eslint",
-    "commitlint": "commitlint --from d884a42",
+    "commitlint": "commitlint --from 3bf70b4",
     "eslint": "eslint .",
     "release:plugin": "node scripts/release-package.js plugin",
-    "release:server": "node scripts/release-package.js server",
-    "prepare": "husky"
+    "release:server": "node scripts/release-package.js server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aryan-mann/mcp-server-tauri.git"
+  },
+  "author": "aryan-mann",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "tauri",
+    "automation",
+    "testing",
+    "debugging",
+    "cursor",
+    "windsurf",
+    "vscode"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "0.6.1",
+    "execa": "9.6.0",
+    "html2canvas": "1.4.1",
+    "ws": "8.18.3",
+    "zod": "3.25.76",
+    "zod-to-json-schema": "3.25.0"
   },
   "devDependencies": {
     "@commitlint/cli": "12.1.1",
