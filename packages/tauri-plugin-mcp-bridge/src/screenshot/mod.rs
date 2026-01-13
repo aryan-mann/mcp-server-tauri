@@ -62,13 +62,26 @@ fn get_effective_max_width(param: Option<u32>) -> Option<u32> {
         .and_then(|s| s.parse::<u32>().ok())
 }
 
+/// Convert PNG data to JPEG format with specified quality.
+fn convert_to_jpeg(png_data: Vec<u8>, quality: u8) -> Result<Vec<u8>, ScreenshotError> {
+    let img = image::load_from_memory(&png_data)
+        .map_err(|e| ScreenshotError::EncodeFailed(format!("Failed to decode PNG: {e}")))?;
+
+    let mut buffer = Cursor::new(Vec::new());
+    let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buffer, quality);
+
+    img.write_with_encoder(encoder)
+        .map_err(|e| ScreenshotError::EncodeFailed(format!("Failed to encode JPEG: {e}")))?;
+
+    Ok(buffer.into_inner())
+}
+
 /// Resize image data if it exceeds max_width, preserving aspect ratio.
 /// Returns the original data if no resizing is needed.
+/// Note: This function only handles resizing, not format conversion.
 fn resize_if_needed(
     data: Vec<u8>,
     max_width: u32,
-    format: &str,
-    quality: u8,
 ) -> Result<Vec<u8>, ScreenshotError> {
     let img = image::load_from_memory(&data)
         .map_err(|e| ScreenshotError::ResizeFailed(format!("Failed to decode image: {e}")))?;
@@ -88,22 +101,29 @@ fn resize_if_needed(
     // Resize using Lanczos3 for high quality
     let resized = img.resize(max_width, new_height, FilterType::Lanczos3);
 
-    // Encode back to the requested format
+    // Encode back to PNG (format conversion happens later)
     let mut buffer = Cursor::new(Vec::new());
-
-    if format == "jpeg" {
-        let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buffer, quality);
-
-        resized
-            .write_with_encoder(encoder)
-            .map_err(|e| ScreenshotError::ResizeFailed(format!("Failed to encode JPEG: {e}")))?;
-    } else {
-        resized
-            .write_to(&mut buffer, ImageFormat::Png)
-            .map_err(|e| ScreenshotError::ResizeFailed(format!("Failed to encode PNG: {e}")))?;
-    }
+    resized
+        .write_to(&mut buffer, ImageFormat::Png)
+        .map_err(|e| ScreenshotError::ResizeFailed(format!("Failed to encode PNG: {e}")))?;
 
     Ok(buffer.into_inner())
+}
+
+/// Convert PNG data (from platform implementations) to the requested format.
+/// Platform implementations always return PNG, so this converts to JPEG if needed.
+fn convert_format(
+    data: Vec<u8>,
+    format: &str,
+    quality: u8,
+) -> Result<Vec<u8>, ScreenshotError> {
+    // If PNG is requested, return as-is (platform implementations return PNG)
+    if format == "png" {
+        return Ok(data);
+    }
+
+    // Convert to JPEG (handles any format other than PNG, though only JPEG is expected)
+    convert_to_jpeg(data, quality)
 }
 
 /// Platform-specific screenshot implementation trait
@@ -148,10 +168,13 @@ pub async fn capture_viewport_screenshot<R: Runtime>(
 
     // Apply max_width constraint if specified (param or env var)
     let effective_max_width = get_effective_max_width(max_width);
-    let final_data = match effective_max_width {
-        Some(max_w) => resize_if_needed(screenshot.data, max_w, format, quality)?,
+    let resized_data = match effective_max_width {
+        Some(max_w) => resize_if_needed(screenshot.data, max_w)?,
         None => screenshot.data,
     };
+
+    // Convert to the requested format (PNG data from platform -> JPEG if needed)
+    let final_data = convert_format(resized_data, format, quality)?;
 
     // Convert to base64 data URL
     let mime_type = if format == "jpeg" {
